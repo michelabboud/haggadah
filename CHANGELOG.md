@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.0.2] - 2026-03-26
+### Fixed
+- **Mobile Reading Experience**: Disabled 3D Book mode on phones and forced the mobile app into the plain reading layout for a more stable, readable experience.
+
 ## [2.0.1] - 2026-03-26
 ### Fixed
 - **Android Voice Playback**: Switched the Capacitor app to native text-to-speech via `@capacitor-community/text-to-speech`, so Hebrew narration works in the Android APK instead of relying on the WebView speech API.
