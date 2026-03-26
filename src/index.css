@@ -348,10 +348,13 @@ body.theme-dark .voice-select {
 }
 
 .book-page {
-  background: var(--bg-color) var(--ancient-scroll-image);
+  background-color: #f6efdc;
+  background-image:
+    linear-gradient(rgba(253, 251, 247, 0.9), rgba(246, 239, 220, 0.86)),
+    var(--ancient-scroll-image);
   background-size: cover;
-  background-blend-mode: multiply;
-  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.4), 3px 0 10px rgba(62, 39, 35, 0.6) !important;
+  background-position: center;
+  box-shadow: inset 0 0 28px rgba(62, 39, 35, 0.12), 3px 0 10px rgba(62, 39, 35, 0.25) !important;
   border-right: 4px solid var(--accent) !important;
   border-top: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
@@ -362,8 +365,11 @@ body.theme-dark .voice-select {
 }
 
 .theme-dark .book-page {
-  background-blend-mode: overlay;
-  box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.9), 4px 0 15px rgba(0,0,0,1) !important;
+  background-color: #2a1a17;
+  background-image:
+    linear-gradient(rgba(32, 18, 15, 0.78), rgba(42, 26, 23, 0.84)),
+    var(--ancient-scroll-image);
+  box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.75), 4px 0 15px rgba(0,0,0,0.8) !important;
 }
 
 .page-content {
@@ -378,8 +384,14 @@ body.theme-dark .voice-select {
   box-shadow: none;
   padding: 0;
   margin: 0;
-  background: transparent;
+  background: rgba(253, 251, 247, 0.82);
+  border: 1px solid rgba(180, 133, 48, 0.22);
   flex-direction: column; /* Force banners out if they try to render side-by-side */
+}
+
+.theme-dark .book-passage-wrapper .step-card {
+  background: rgba(46, 29, 24, 0.82);
+  border-color: rgba(212, 175, 55, 0.18);
 }
 
 /* Hide side banners in 3D mode since the page restricts width heavily */
