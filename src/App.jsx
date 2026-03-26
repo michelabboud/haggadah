@@ -346,6 +346,7 @@ function App() {
   const [isPaused, setIsPaused] = useState(false);
   const [playingPassageRef, setPlayingPassageRef] = useState(null);
   const speechRequestIdRef = useRef(0);
+  const is3DEnabled = is3DMode && !isMobileViewport;
 
   useEffect(() => {
     if (!speechSupported || nativeSpeechPlatform) return;
@@ -474,12 +475,18 @@ function App() {
     return () => mediaQuery.removeEventListener('change', handleViewportChange);
   }, []);
 
+  useEffect(() => {
+    if (isMobileViewport && is3DMode) {
+      setIs3DMode(false);
+    }
+  }, [is3DMode, isMobileViewport]);
+
   // Disable 'both' lang mode strictly when in 3D Mode
   useEffect(() => {
-    if (is3DMode && lang === 'both') {
+    if (is3DEnabled && lang === 'both') {
       setLang('hebrew'); // Force default to Hebrew when entering 3D to maintain physical realism
     }
-  }, [is3DMode, lang]);
+  }, [is3DEnabled, lang]);
 
   // Derive fixed-size pages dynamically (e.g., max 2 long blocks of text per physical book page to prevent scrolling)
   const paginatedHaggadah = React.useMemo(() => {
@@ -574,7 +581,7 @@ function App() {
   }, [handlePlayStart, nativeSpeechPlatform, resetSpeechState, selectedVoiceURI, speechSupported, voices, withNativeSpeechRetry]);
 
   const handleNavigate = useCallback((stepId) => {
-    if (is3DMode) {
+    if (is3DEnabled) {
        const pIndex = paginatedHaggadah.findIndex(p => getStepFromRef(p.ref) === stepId);
        if (pIndex !== -1) {
           const ltrIndex = pIndex + 1; // Offset by 1 for cover-front
@@ -598,14 +605,14 @@ function App() {
     if (window.innerWidth < 1024) {
       setIsTOCVisible(false);
     }
-  }, [is3DMode, paginatedHaggadah, lang]);
+  }, [is3DEnabled, paginatedHaggadah, lang]);
 
   const flipBookRef = useRef(null);
 
   useEffect(() => {
     if (!autoScrollSpeed) return;
     
-    if (is3DMode) {
+    if (is3DEnabled) {
       const timingMap = { slow: 30000, medium: 15000, fast: 8000 }; // Wait X ms before auto page-flip
       const intervalId = setInterval(() => {
         try {
@@ -648,11 +655,11 @@ function App() {
       animationFrameId = requestAnimationFrame(scrollStep);
       return () => cancelAnimationFrame(animationFrameId);
     }
-  }, [autoScrollSpeed, is3DMode]);
+  }, [autoScrollSpeed, is3DEnabled, lang]);
 
   return (
     <div
-      className={`app-container ${is3DMode ? 'mode-3d' : 'mode-plain'} ${isDarkMode ? 'theme-dark' : ''} ${isMobileViewport ? 'mobile-viewport' : ''}`}
+      className={`app-container ${is3DEnabled ? 'mode-3d' : 'mode-plain'} ${isDarkMode ? 'theme-dark' : ''} ${isMobileViewport ? 'mobile-viewport' : ''}`}
       style={{ '--ancient-scroll-image': `url(${ancientScrollImage})` }}
     >
       <nav className={`top-nav ${isMobileViewport ? 'mobile-nav' : ''}`}>
@@ -673,7 +680,7 @@ function App() {
               </div>
               <div className="language-toggle compact-group">
                 <button className={`lang-btn ${lang === 'hebrew' ? 'active' : ''}`} onClick={() => setLang('hebrew')}>He</button>
-                {!is3DMode && (
+                {!is3DEnabled && (
                   <button className={`lang-btn ${lang === 'both' ? 'active' : ''}`} onClick={() => setLang('both')}>Bi</button>
                 )}
                 <button className={`lang-btn ${lang === 'english' ? 'active' : ''}`} onClick={() => setLang('english')}>En</button>
@@ -681,11 +688,6 @@ function App() {
             </div>
 
             <div className="mobile-nav-row mobile-nav-row-bottom">
-              <div className="view-mode-toggle compact-group">
-                <button className={`lang-btn ${!is3DMode ? 'active' : ''}`} onClick={() => setIs3DMode(false)}>Plain</button>
-                <button className={`lang-btn ${is3DMode ? 'active' : ''}`} onClick={() => setIs3DMode(true)}>3D</button>
-              </div>
-
               {speechSupported && (
                 <div className="voice-toggle compact-group compact-voice">
                   {isSpeaking && (
@@ -741,8 +743,8 @@ function App() {
 
               <div className="view-mode-toggle">
                 <span className="scroll-label">View:</span>
-                <button className={`lang-btn ${!is3DMode ? 'active' : ''}`} onClick={() => setIs3DMode(false)}>Plain</button>
-                <button className={`lang-btn ${is3DMode ? 'active' : ''}`} onClick={() => setIs3DMode(true)}>3D Book</button>
+                <button className={`lang-btn ${!is3DEnabled ? 'active' : ''}`} onClick={() => setIs3DMode(false)}>Plain</button>
+                <button className={`lang-btn ${is3DEnabled ? 'active' : ''}`} onClick={() => setIs3DMode(true)}>3D Book</button>
               </div>
 
               {speechSupported && (
@@ -775,13 +777,13 @@ function App() {
 
               <div className="language-toggle">
                 <button className={`lang-btn ${lang === 'hebrew' ? 'active' : ''}`} onClick={() => setLang('hebrew')}>Hebrew</button>
-                {!is3DMode && (
+                {!is3DEnabled && (
                   <button className={`lang-btn ${lang === 'both' ? 'active' : ''}`} onClick={() => setLang('both')}>Both</button>
                 )}
                 <button className={`lang-btn ${lang === 'english' ? 'active' : ''}`} onClick={() => setLang('english')}>English</button>
               </div>
               <div className="scroll-toggle">
-                <span className="scroll-label">{is3DMode ? 'Auto Flip:' : 'Auto Scroll:'}</span>
+                <span className="scroll-label">{is3DEnabled ? 'Auto Flip:' : 'Auto Scroll:'}</span>
                 <button className={`lang-btn ${autoScrollSpeed === null ? 'active' : ''}`} onClick={() => setAutoScrollSpeed(null)}>Off</button>
                 <button className={`lang-btn ${autoScrollSpeed === 'slow' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('slow')}>Slow</button>
                 <button className={`lang-btn ${autoScrollSpeed === 'medium' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('medium')}>Med</button>
@@ -801,7 +803,7 @@ function App() {
         />
         
         <div className="content-area">
-          {!is3DMode && (
+          {!is3DEnabled && (
             <header className="hero">
               <h1 className="hebrew hero-hebrew">הגדה של פסח</h1>
               <h1>The Passover Haggadah</h1>
@@ -810,7 +812,7 @@ function App() {
           )}
 
           <main className="steps-grid">
-            {is3DMode ? (() => {
+            {is3DEnabled ? (() => {
               const isHebrew = lang === 'hebrew';
               
               let bookElements = [
