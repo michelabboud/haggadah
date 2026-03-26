@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Pesach</string>
-    <string name="title_activity_main">Pesach</string>
+    <string name="app_name">Haggadah</string>
+    <string name="title_activity_main">Haggadah</string>
     <string name="package_name">com.pesach.haggadah</string>
     <string name="custom_url_scheme">com.pesach.haggadah</string>
 </resources>
