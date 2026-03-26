@@ -1,4 +1,5 @@
 :root {
+  --bg-color: #fdfbf7;
   --primary: #fdfbf7; /* Light Parchment Base */
   --secondary: #f4eedb; /* Deeper Parchment */
   --accent: #b48530; /* Fine aged gold/bronze */
@@ -6,6 +7,17 @@
   --text-dark: #3e2723; /* Almost black sepia for primary text */
   --bg-gradient: linear-gradient(135deg, #fdfbf7 0%, #e8dec1 100%);
   --border-color: rgba(180, 133, 48, 0.4);
+}
+
+body.theme-dark {
+  --bg-color: #2a1a17;
+  --primary: #2a1a17; /* Deep Espresso / Vellum Base */
+  --secondary: #3e2723; /* Rich Dark Brown */
+  --accent: #d4af37; /* Bright Aged Gold */
+  --text-light: #bcaaa4; /* Light Brown */
+  --text-dark: #e8dbb0; /* Light Parchment Text */
+  --bg-gradient: linear-gradient(135deg, #1a0f0d 0%, #2a1a17 100%);
+  --border-color: rgba(212, 175, 55, 0.3);
 }
 
 * {
@@ -32,12 +44,6 @@ h1, h2, h3, h4, .hebrew {
   direction: rtl;
 }
 
-.app-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem 1rem;
-}
-
 /* Header */
 .top-nav {
   position: fixed;
@@ -45,7 +51,7 @@ h1, h2, h3, h4, .hebrew {
   left: 0;
   right: 0;
   min-height: 70px;
-  background: rgba(253, 251, 247, 0.95);
+  background: var(--primary);
   backdrop-filter: blur(12px);
   z-index: 1000;
   display: flex;
@@ -71,13 +77,48 @@ h1, h2, h3, h4, .hebrew {
   flex-wrap: wrap;
 }
 
-.language-toggle, .scroll-toggle {
+.language-toggle, .scroll-toggle, .view-mode-toggle, .voice-toggle {
   display: flex;
   gap: 0.3rem;
   background: rgba(62, 39, 35, 0.05);
   padding: 0.3rem;
   border-radius: 20px;
   border: 1px solid var(--border-color);
+  align-items: center;
+}
+
+.voice-select {
+  background: transparent;
+  border: none;
+  font-family: 'Cinzel', serif;
+  color: var(--text-dark);
+  font-size: 0.9rem;
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
+  max-width: 140px;
+}
+
+body.theme-dark .voice-select {
+  color: #e8dbb0;
+}
+
+.voice-select option {
+  background: var(--bg-color);
+  color: var(--text-dark);
+}
+
+.global-tools {
+  display: flex;
+  gap: 0.2rem;
+  align-items: center;
+}
+
+.icon-btn {
+  font-size: 1.2rem;
+  padding: 0.2rem 0.6rem;
+  display: flex;
+  justify-content: center;
   align-items: center;
 }
 
@@ -124,11 +165,11 @@ h1, h2, h3, h4, .hebrew {
 
 .hero {
   text-align: center;
-  padding: 6rem 1rem 4rem;
+  padding: 4rem 1rem;
   background: url('/images/ancient_scroll_webp_1774514783867.png') center/cover;
   border-radius: 12px;
   border: 2px solid var(--border-color);
-  margin-top: 80px;
+  margin-top: 1rem;
   margin-bottom: 3rem;
   box-shadow: 0 10px 30px rgba(62, 39, 35, 0.2);
   position: relative;
@@ -184,6 +225,19 @@ h1, h2, h3, h4, .hebrew {
   flex-direction: column;
   gap: 1.5rem;
   box-shadow: 0 4px 15px rgba(62, 39, 35, 0.05);
+  transition: all 0.4s ease;
+}
+
+.step-card.playing-highlight {
+  border-color: #f39c12;
+  box-shadow: 0 0 25px rgba(243, 156, 18, 0.3) !important;
+  background: rgba(243, 156, 18, 0.05);
+}
+
+.theme-dark .step-card.playing-highlight {
+  border-color: var(--accent);
+  box-shadow: 0 0 35px rgba(212, 175, 55, 0.25) !important;
+  background: rgba(212, 175, 55, 0.08); /* Very subtle gold tint */
 }
 
 @media (min-width: 768px) {
@@ -289,30 +343,35 @@ h1, h2, h3, h4, .hebrew {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 2rem 0;
+  padding: 0;
   width: 100%;
 }
 
 .book-page {
-  background: var(--bg-color); /* Dynamic Theme color */
-  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.05);
+  background: var(--bg-color) url('/images/ancient_scroll_webp_1774514783867.png');
+  background-size: cover;
+  background-blend-mode: multiply;
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.4), 3px 0 10px rgba(62, 39, 35, 0.6) !important;
+  border-right: 4px solid var(--accent) !important;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 2px;
   overflow: hidden;
-  border: 1px solid var(--border-color);
   transition: background 0.5s ease;
+  transform-style: preserve-3d;
+}
+
+.theme-dark .book-page {
+  background-blend-mode: overlay;
+  box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.9), 4px 0 15px rgba(0,0,0,1) !important;
 }
 
 .page-content {
   padding: 2rem;
   height: 100%;
-  overflow-y: auto;
-  /* Custom scrollbar for pages */
-}
-.page-content::-webkit-scrollbar {
-  width: 6px;
-}
-.page-content::-webkit-scrollbar-thumb {
-  background: rgba(180, 133, 48, 0.5);
-  border-radius: 10px;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .book-passage-wrapper .step-card {
@@ -329,45 +388,142 @@ h1, h2, h3, h4, .hebrew {
   display: none !important; 
 }
 
+/* -- 3D Cover Upgrades -- */
 .cover-front, .cover-back {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  height: 100% !important;
+  text-align: center !important;
+  padding: 1.5rem !important;
+  background: url('/images/ancient_scroll_webp_1774514783867.png') center/cover !important;
+  background-color: #5c3a21 !important; /* Rich reddish saddle-brown leather */
+  background-blend-mode: multiply !important;
+  border: 12px solid #3e2723 !important; /* Deep dark brown binding edge */
+  box-shadow: inset 0 0 100px rgba(46, 25, 14, 0.95), inset 0 0 15px rgba(180, 133, 48, 0.6) !important;
+  border-radius: 4px !important;
+  position: relative !important;
+}
+
+.cover-inner {
+  border: 2px solid #d4af37; /* Metallic gold inner box */
+  outline: 1px solid #d4af37;
+  outline-offset: 6px;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: 100%;
-  text-align: center;
   padding: 2rem;
-  background: var(--bg-color);
-  border: 4px double var(--accent);
+  background: rgba(62, 39, 35, 0.4);
+  border-radius: 2px;
 }
 
-.cover-front h1 {
+.cover-front h1, .cover-back h2 {
   font-family: 'Cinzel', serif;
-  color: var(--accent);
-  margin-bottom: 0.5rem;
-}
-.cover-front .hebrew {
-  font-size: 3rem;
+  color: #e8dbb0 !important;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.9) !important;
+  margin: 0 !important;
 }
 
-/* TOC Drawer Styles */
+.cover-front h1.hebrew {
+  font-size: 4rem !important;
+  color: #d4af37 !important; /* Standout gold */
+}
+
+.cover-ornament {
+  width: 160px;
+  height: auto;
+  margin: 2.5rem 0;
+  filter: drop-shadow(0px 8px 12px rgba(0,0,0,0.9)) sepia(0.8) hue-rotate(-10deg) saturate(1.5) brightness(0.9);
+}
+
+.cover-back .cover-ornament {
+  width: 90px;
+  margin: 1.5rem 0;
+}
+
+.cover-divider {
+  width: 60%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #d4af37, transparent);
+  margin: 1.5rem 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+/* -- Layout Resizing -- */
+.app-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+.main-layout {
+  display: flex;
+  flex: 1;
+  margin-top: 70px; /* Flush exactly against the Top Navigation */
+  position: relative;
+  width: 100%;
+}
+
+.content-area {
+  flex: 1;
+  width: 100%;
+  max-width: 1200px; /* Safe reading width only on content */
+  margin: 0 auto;
+  padding-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* -- Desktop Sider TOC Panel -- */
 .toc-drawer {
-  position: fixed;
-  top: 0;
-  left: -350px;
   width: 300px;
-  height: 100vh;
+  min-width: 300px;
   background: var(--bg-color);
-  box-shadow: 4px 0 20px rgba(0,0,0,0.15);
-  z-index: 2000;
-  transition: left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  border-right: 2px dashed var(--border-color);
+  height: calc(100vh - 80px);
+  position: sticky;
+  top: 80px;
   overflow-y: auto;
-  padding: 2rem 1rem;
-  border-right: 1px solid var(--border-color);
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  z-index: 500;
+  padding: 2rem 1.5rem;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.05); /* Subtle depth */
 }
 
-.toc-drawer.open {
-  left: 0;
+/* When hidden, smoothly collapse width sideways */
+.toc-drawer:not(.open) {
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  border-right: none;
+  opacity: 0;
+  overflow: hidden;
+}
+
+/* Mobile Modal TOC Drawer Fallback */
+@media (max-width: 1024px) {
+  .toc-drawer {
+    position: fixed;
+    top: 80px;
+    left: -320px;
+    width: 320px;
+    height: calc(100vh - 80px);
+    border-right: 3px solid var(--accent);
+    box-shadow: 4px 0 15px rgba(0,0,0,0.4);
+    z-index: 2000;
+    transition: left 0.4s ease;
+  }
+  .toc-drawer.open {
+    left: 0;
+  }
 }
 
 .toc-header {
@@ -415,23 +571,25 @@ h1, h2, h3, h4, .hebrew {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 0.5rem;
+  min-width: 250px;
 }
 
 .toc-list li {
   display: flex;
   justify-content: space-between;
-  padding: 0.6rem 1rem;
-  border-radius: 6px;
+  padding: 0.8rem 1rem;
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-family: 'Inter', sans-serif;
-  color: #8c7b75;
+  background: rgba(180, 133, 48, 0.05);
+  border: 1px solid var(--border-color);
+  color: var(--text-dark);
 }
 
 .toc-list li:hover {
-  background: rgba(180, 133, 48, 0.05);
-  color: var(--text-dark);
+  background: rgba(180, 133, 48, 0.15);
+  transform: translateX(5px);
 }
 
 .toc-list li.active {

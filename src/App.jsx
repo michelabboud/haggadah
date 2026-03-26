@@ -38,6 +38,30 @@ function getStepFromRef(ref) {
   return null;
 }
 
+function supportsSpeechSynthesis() {
+  return typeof window !== 'undefined' && 'speechSynthesis' in window;
+}
+
+function chunkPassage(passage, rowsPerPage) {
+  const maxLines = Math.max((passage.hebrew || []).length, (passage.english || []).length);
+  if (maxLines <= rowsPerPage) {
+    return [{ ...passage, showHeader: true, showFooter: true, chunkId: 0 }];
+  }
+  const chunks = [];
+  for (let i = 0; i < maxLines; i += rowsPerPage) {
+    chunks.push({
+      ...passage,
+      hebrew: (passage.hebrew || []).slice(i, i + rowsPerPage),
+      english: (passage.english || []).slice(i, i + rowsPerPage),
+      transliteration: (passage.transliteration || []).slice(i, i + rowsPerPage),
+      showHeader: i === 0,
+      showFooter: (i + rowsPerPage >= maxLines),
+      chunkId: i
+    });
+  }
+  return chunks;
+}
+
 function TOCDrawer({ isVisible, onClose, onNavigate, activeStep }) {
   return (
     <div className={`toc-drawer ${isVisible ? 'open' : ''}`}>
@@ -62,10 +86,11 @@ function TOCDrawer({ isVisible, onClose, onNavigate, activeStep }) {
   );
 }
 
-function PassageCard({ passage, index, languagePreference, isPhonetic, onVisible }) {
+const PassageCard = ({ passage, index, languagePreference, isPhonetic, showHeader = true, showFooter = true, onVisible, is3DMode = false, selectedVoiceURI, playingPassageRef, isSpeakingState, onPlayStart }) => {
   const cardRef = useRef(null);
   const ref = passage.ref;
   const stepId = getStepFromRef(ref);
+  const canSpeak = supportsSpeechSynthesis();
 
   const [assignedTo, setAssignedTo] = useState(() => {
     return localStorage.getItem(`haggadah_assign_${ref}`) || '';
@@ -110,11 +135,23 @@ function PassageCard({ passage, index, languagePreference, isPhonetic, onVisible
   };
 
   const handlePlayPassage = () => {
+    if (!canSpeak) return;
+
     window.speechSynthesis.cancel();
+    if (onPlayStart) onPlayStart(passage.ref);
+
     const cleanText = (passage.hebrew || []).join(' ').replace(/<[^>]*>?/gm, '');
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = "he-IL";
-    utterance.rate = 0.85;
+    
+    if (selectedVoiceURI) {
+       const availableVoices = window.speechSynthesis.getVoices();
+       const exactVoice = availableVoices.find(v => v.voiceURI === selectedVoiceURI);
+       if (exactVoice) utterance.voice = exactVoice;
+    } else {
+       utterance.lang = "he-IL";
+    }
+    
+    utterance.rate = 0.66; // increased slightly at user request
     window.speechSynthesis.speak(utterance);
   };
   
@@ -163,7 +200,11 @@ function PassageCard({ passage, index, languagePreference, isPhonetic, onVisible
   const isInfo = (text) => text && (text.trim().startsWith('<b>') || text.trim().startsWith('<strong>'));
 
   return (
-    <div className={`step-card full-passage lang-${languagePreference}`} ref={cardRef} data-step={stepId}>
+    <div
+      className={`step-card full-passage lang-${languagePreference} ${isSpeakingState && playingPassageRef === ref ? 'playing-highlight' : ''}`}
+      ref={cardRef}
+      data-step={stepId}
+    >
       {showEnglish && (
         <div className="step-banner banner-left">
           <img src={image} alt={`Banner Left for ${passage.enTitle}`} />
@@ -171,33 +212,35 @@ function PassageCard({ passage, index, languagePreference, isPhonetic, onVisible
       )}
 
       <div className="step-content">
-        <div className="step-header">
-          <div className="title-row">
-            {showHebrew && <h2 className="hebrew hebrew-title">{passage.heTitle}</h2>}
-            {showEnglish && <span className="english-title">{showHebrew ? '— ' : ''}{passage.enTitle}</span>}
+        {showHeader && (
+          <div className="step-header">
+            <div className="title-row">
+              {showHebrew && <h2 className="hebrew hebrew-title">{passage.heTitle}</h2>}
+              {showEnglish && <span className="english-title">{showHebrew ? '— ' : ''}{passage.enTitle}</span>}
+            </div>
+            <div className="assignment-tag" style={{display: 'flex', gap: '0.5rem', justifyContent: 'center'}}>
+              {isEditingAssign ? (
+                <input 
+                  autoFocus 
+                  defaultValue={assignedTo} 
+                  onKeyDown={handleAssignSave} 
+                  onBlur={() => setIsEditingAssign(false)}
+                  placeholder="Type name (Enter to save)" 
+                  className="assign-input"
+                />
+              ) : (
+                <span className="assign-badge" onClick={() => setIsEditingAssign(true)}>
+                  {assignedTo ? `📖 Read by: ${assignedTo}` : '+ Assign Reader'}
+                </span>
+              )}
+              {canSpeak && showHebrew && (
+                <button className="assign-badge audio-btn" style={{border: 'none', background: 'transparent'}} onClick={handlePlayPassage} title="Read Aloud in Hebrew">
+                  🔊 Listen
+                </button>
+              )}
+            </div>
           </div>
-          <div className="assignment-tag" style={{display: 'flex', gap: '0.5rem', justifyContent: 'center'}}>
-            {isEditingAssign ? (
-              <input 
-                autoFocus 
-                defaultValue={assignedTo} 
-                onKeyDown={handleAssignSave} 
-                onBlur={() => setIsEditingAssign(false)}
-                placeholder="Type name (Enter to save)" 
-                className="assign-input"
-              />
-            ) : (
-              <span className="assign-badge" onClick={() => setIsEditingAssign(true)}>
-                {assignedTo ? `📖 Read by: ${assignedTo}` : '+ Assign Reader'}
-              </span>
-            )}
-            {showHebrew && (
-              <button className="assign-badge audio-btn" style={{border: 'none', background: 'transparent'}} onClick={handlePlayPassage} title="Read Aloud in Hebrew">
-                🔊 Listen
-              </button>
-            )}
-          </div>
-        </div>
+        )}
         
         {rows.map((row, i) => {
           const hasContent = (showHebrew && row.hebrew) || (showEnglish && row.english);
@@ -224,7 +267,7 @@ function PassageCard({ passage, index, languagePreference, isPhonetic, onVisible
           );
         })}
 
-        {commentaries.length > 0 && (
+        {showFooter && commentaries.length > 0 && (
           <div className="commentary-section" style={{marginTop: '1.5rem', borderTop: '1px dashed var(--border-color)', paddingTop: '1rem', width: '100%', textAlign: 'center'}}>
             <button className="assign-badge" onClick={() => setShowCommentary(!showCommentary)} style={{marginBottom: '1rem', background: showCommentary ? 'var(--accent)' : 'transparent', color: showCommentary ? '#fff' : 'var(--accent)'}}>
               📜 {showCommentary ? "Hide Rabbinic Insights" : "Expand Rabbinic Insights"}
@@ -261,6 +304,7 @@ const Page = React.forwardRef((props, ref) => {
 });
 
 function App() {
+  const speechSupported = supportsSpeechSynthesis();
   const [lang, setLang] = useState('both');
   const [autoScrollSpeed, setAutoScrollSpeed] = useState(null);
   const [activeStep, setActiveStep] = useState('Kadesh');
@@ -269,150 +313,364 @@ function App() {
   const [isTOCVisible, setIsTOCVisible] = useState(false);
   const [isPhonetic, setIsPhonetic] = useState(false);
 
+  const [voices, setVoices] = useState([]);
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState(null);
+
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [playingPassageRef, setPlayingPassageRef] = useState(null);
+
+  useEffect(() => {
+    if (!speechSupported) return;
+
+    const checkSpeechState = setInterval(() => {
+      setIsSpeaking(window.speechSynthesis.speaking);
+      setIsPaused(window.speechSynthesis.paused);
+    }, 200);
+
+    return () => clearInterval(checkSpeechState);
+  }, [speechSupported]);
+
+  const handlePlayStart = (ref) => {
+    setPlayingPassageRef(ref);
+    const step = getStepFromRef(ref);
+    if (step) {
+       setActiveStep(step);
+    }
+  };
+
+  const handlePauseResumeToggle = () => {
+    if (!speechSupported) return;
+
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    } else if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.pause();
+    }
+  };
+
+  const handleStopSpeech = () => {
+    if (!speechSupported) return;
+
+    window.speechSynthesis.cancel();
+    setPlayingPassageRef(null);
+  };
+
+  useEffect(() => {
+    if (!speechSupported) return;
+
+    const loadVoices = () => {
+      const v = window.speechSynthesis.getVoices();
+      setVoices(v);
+    };
+
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+
+    return () => {
+      window.speechSynthesis.onvoiceschanged = null;
+    };
+  }, [speechSupported]);
+
+  useEffect(() => {
+     if (!selectedVoiceURI && voices.length > 0) {
+        const he = voices.find(v => v.lang.startsWith('he'));
+        if (he) setSelectedVoiceURI(he.voiceURI);
+     }
+  }, [voices, selectedVoiceURI]);
+
+  // Disable 'both' lang mode strictly when in 3D Mode
+  useEffect(() => {
+    if (is3DMode && lang === 'both') {
+      setLang('hebrew'); // Force default to Hebrew when entering 3D to maintain physical realism
+    }
+  }, [is3DMode, lang]);
+
+  // Derive fixed-size pages dynamically (e.g., max 2 long blocks of text per physical book page to prevent scrolling)
+  const paginatedHaggadah = React.useMemo(() => {
+    return haggadahFull.flatMap(p => chunkPassage(p, 2));
+  }, []);
+
+  // Hook to properly toggle Night Mode directly on the entire document body
+  useEffect(() => {
+    if (isDarkMode) {
+      document.body.classList.add('theme-dark');
+    } else {
+      document.body.classList.remove('theme-dark');
+    }
+  }, [isDarkMode]);
+
   const handleVisibleStep = useCallback((stepId) => {
     setActiveStep(stepId);
   }, []);
 
   const handleNavigate = useCallback((stepId) => {
-    const element = document.querySelector(`[data-step="${stepId}"]`);
-    if (element) {
-      const yOffset = -120; // accounting for fixed nav
-      const y = element.getBoundingClientRect().top + window.scrollY + yOffset;
-      window.scrollTo({top: y, behavior: 'smooth'});
+    if (is3DMode) {
+       const pIndex = paginatedHaggadah.findIndex(p => getStepFromRef(p.ref) === stepId);
+       if (pIndex !== -1) {
+          const ltrIndex = pIndex + 1; // Offset by 1 for cover-front
+          const totalPages = paginatedHaggadah.length + 2; 
+          // If in RTL mode, the array is physically reversed in the Virtual DOM. Find its mirrored index.
+          const finalIndex = lang === 'hebrew' ? totalPages - 1 - ltrIndex : ltrIndex;
+          if (flipBookRef.current && flipBookRef.current.pageFlip) {
+             flipBookRef.current.pageFlip().turnToPage(finalIndex);
+          }
+       }
+    } else {
+      const element = document.querySelector(`[data-step="${stepId}"]`);
+      if (element) {
+        const yOffset = -120; // accounting for fixed nav
+        const y = element.getBoundingClientRect().top + window.scrollY + yOffset;
+        window.scrollTo({top: y, behavior: 'smooth'});
+      }
     }
-    setIsTOCVisible(false);
-  }, []);
+    
+    // Automatically close internal Drawer if running on a tablet/mobile. On Desktop, leave panel rigidly open.
+    if (window.innerWidth < 1024) {
+      setIsTOCVisible(false);
+    }
+  }, [is3DMode, paginatedHaggadah, lang]);
+
+  const flipBookRef = useRef(null);
 
   useEffect(() => {
-    if (!autoScrollSpeed || is3DMode) return;
+    if (!autoScrollSpeed) return;
     
-    let speedMap = { slow: 0.3, medium: 0.8, fast: 2.0 };
-    let animationFrameId;
+    if (is3DMode) {
+      const timingMap = { slow: 30000, medium: 15000, fast: 8000 }; // Wait X ms before auto page-flip
+      const intervalId = setInterval(() => {
+        try {
+          if (flipBookRef.current && flipBookRef.current.pageFlip) {
+             if (lang === 'hebrew') {
+               flipBookRef.current.pageFlip().flipPrev(); // Read backwards for Hebrew RTL emulation
+             } else {
+               flipBookRef.current.pageFlip().flipNext();
+             }
+          }
+        } catch (e) {
+          console.error("Page-flip interval error", e);
+        }
+      }, timingMap[autoScrollSpeed]);
+      return () => clearInterval(intervalId);
+    } else {
+      // Speeds are measured in Pixels Per Second (halved from prior speeds)
+      const speedMap = { slow: 6, medium: 15, fast: 45 }; 
+      let animationFrameId;
+      let lastTime = performance.now();
+      let exactScrollY = window.scrollY;
+  
+      const scrollStep = (timestamp) => {
+        const deltaTime = timestamp - lastTime;
+        lastTime = timestamp;
 
-    const scrollStep = () => {
-      window.scrollBy({ top: speedMap[autoScrollSpeed], left: 0 });
+        // If user manually scrolls, naturally resync our theoretical position
+        if (Math.abs(exactScrollY - window.scrollY) > 2.0) {
+           exactScrollY = window.scrollY;
+        }
+
+        exactScrollY += (speedMap[autoScrollSpeed] * deltaTime) / 1000;
+        
+        // Pass the highly accurate float to the compositor for native sub-pixel anti-aliased scrolling
+        window.scrollTo(0, exactScrollY);
+
+        animationFrameId = requestAnimationFrame(scrollStep);
+      };
+  
       animationFrameId = requestAnimationFrame(scrollStep);
-    };
-
-    animationFrameId = requestAnimationFrame(scrollStep);
-    return () => cancelAnimationFrame(animationFrameId);
+      return () => cancelAnimationFrame(animationFrameId);
+    }
   }, [autoScrollSpeed, is3DMode]);
 
   return (
     <div className={`app-container ${is3DMode ? 'mode-3d' : 'mode-plain'} ${isDarkMode ? 'theme-dark' : ''}`}>
-      <TOCDrawer 
-        isVisible={isTOCVisible} 
-        onClose={() => setIsTOCVisible(false)} 
-        onNavigate={handleNavigate} 
-        activeStep={activeStep} 
-      />
-      
       <nav className="top-nav">
         <div className="nav-brand">Haggadah Shel Pesach</div>
         <div className="nav-controls">
-          <div className="view-toggle">
-            <button className="lang-btn" style={{fontSize: '1.2rem', padding: '0.2rem 0.6rem'}} onClick={() => setIsTOCVisible(true)} title="Table of Contents">
+          <div className="global-tools">
+            <button className="lang-btn icon-btn" onClick={() => setIsTOCVisible(true)} title="Table of Contents">
               ☰
             </button>
-            <button className="lang-btn" style={{fontSize: '1.2rem', padding: '0.2rem 0.6rem', marginLeft: '10px'}} onClick={() => setIsDarkMode(!isDarkMode)} title="Night Mode">
+            <button className="lang-btn icon-btn" onClick={() => setIsDarkMode(!isDarkMode)} title="Night Mode">
               {isDarkMode ? '☀️' : '🌙'}
             </button>
-            <button className={`lang-btn ${isPhonetic ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.2rem 0.6rem', marginLeft: '10px'}} onClick={() => setIsPhonetic(!isPhonetic)} title="Toggle Phonetic Transliteration">
+            <button className={`lang-btn icon-btn ${isPhonetic ? 'active' : ''}`} onClick={() => setIsPhonetic(!isPhonetic)} title="Toggle Phonetic Transliteration">
               Aא
             </button>
-            <span className="scroll-label" style={{marginLeft: '10px'}}>View:</span>
+          </div>
+
+          <div className="view-mode-toggle">
+            <span className="scroll-label">View:</span>
             <button className={`lang-btn ${!is3DMode ? 'active' : ''}`} onClick={() => setIs3DMode(false)}>Plain</button>
             <button className={`lang-btn ${is3DMode ? 'active' : ''}`} onClick={() => setIs3DMode(true)}>3D Book</button>
           </div>
-          <div className="language-toggle">
-            <button className={`lang-btn ${lang === 'hebrew' ? 'active' : ''}`} onClick={() => setLang('hebrew')}>Hebrew</button>
-            <button className={`lang-btn ${lang === 'both' ? 'active' : ''}`} onClick={() => setLang('both')}>Both</button>
-            <button className={`lang-btn ${lang === 'english' ? 'active' : ''}`} onClick={() => setLang('english')}>English</button>
-          </div>
-          {!is3DMode && (
-            <div className="scroll-toggle">
-              <span className="scroll-label">Auto Scroll:</span>
-              <button className={`lang-btn ${autoScrollSpeed === null ? 'active' : ''}`} onClick={() => setAutoScrollSpeed(null)}>Off</button>
-              <button className={`lang-btn ${autoScrollSpeed === 'slow' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('slow')}>Slow</button>
-              <button className={`lang-btn ${autoScrollSpeed === 'medium' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('medium')}>Med</button>
-              <button className={`lang-btn ${autoScrollSpeed === 'fast' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('fast')}>High</button>
+
+          {speechSupported && (
+            <div className="voice-toggle">
+              <span className="scroll-label">Voice:</span>
+              {isSpeaking && (
+                <div style={{display: 'flex', gap: '4px', marginRight: '6px', borderRight: '1px solid var(--border-color)', paddingRight: '8px'}}>
+                  <button className="lang-btn icon-btn" style={{padding: '0 4px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem'}} onClick={handlePauseResumeToggle} title={isPaused ? "Resume Reading" : "Pause Reading"}>
+                    {isPaused ? '▶️' : '⏸️'}
+                  </button>
+                  <button className="lang-btn icon-btn" style={{padding: '0 4px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem', filter: 'grayscale(0.2)'}} onClick={handleStopSpeech} title="Stop Reading">
+                    ⏹️
+                  </button>
+                </div>
+              )}
+              <select
+                value={selectedVoiceURI || ''}
+                onChange={(e) => setSelectedVoiceURI(e.target.value)}
+                className="voice-select"
+              >
+                {voices.filter(v => v.lang.startsWith('he')).map(v => (
+                   <option key={v.voiceURI} value={v.voiceURI}>{v.name}</option>
+                ))}
+                {voices.filter(v => v.lang.startsWith('he')).length === 0 && (
+                   <option disabled>Sys Default</option>
+                )}
+              </select>
             </div>
           )}
+
+          <div className="language-toggle">
+            <button className={`lang-btn ${lang === 'hebrew' ? 'active' : ''}`} onClick={() => setLang('hebrew')}>Hebrew</button>
+            {!is3DMode && (
+              <button className={`lang-btn ${lang === 'both' ? 'active' : ''}`} onClick={() => setLang('both')}>Both</button>
+            )}
+            <button className={`lang-btn ${lang === 'english' ? 'active' : ''}`} onClick={() => setLang('english')}>English</button>
+          </div>
+          <div className="scroll-toggle">
+            <span className="scroll-label">{is3DMode ? 'Auto Flip:' : 'Auto Scroll:'}</span>
+            <button className={`lang-btn ${autoScrollSpeed === null ? 'active' : ''}`} onClick={() => setAutoScrollSpeed(null)}>Off</button>
+            <button className={`lang-btn ${autoScrollSpeed === 'slow' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('slow')}>Slow</button>
+            <button className={`lang-btn ${autoScrollSpeed === 'medium' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('medium')}>Med</button>
+            <button className={`lang-btn ${autoScrollSpeed === 'fast' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('fast')}>High</button>
+          </div>
         </div>
       </nav>
 
-      {/* Note: I removed SederMinimap earlier by replacing it, but I should probably just let TOCDrawer replace it entirely since they do the exact same thing but Drawer is mobile friendly! */}
+      <div className="main-layout">
+        <TOCDrawer 
+          isVisible={isTOCVisible} 
+          onClose={() => setIsTOCVisible(false)} 
+          onNavigate={handleNavigate} 
+          activeStep={activeStep} 
+        />
+        
+        <div className="content-area">
+          {!is3DMode && (
+            <header className="hero">
+              <h1 className="hebrew hero-hebrew">הגדה של פסח</h1>
+              <h1>The Passover Haggadah</h1>
+              <p className="hero-sub">Complete text of the traditional Seder</p>
+            </header>
+          )}
 
-      {!is3DMode && (
-        <header className="hero">
-          <h1 className="hebrew hero-hebrew">הגדה של פסח</h1>
-          <h1>The Passover Haggadah</h1>
-          <p className="hero-sub">Complete text of the traditional Seder</p>
-        </header>
-      )}
-
-      <main className="steps-grid">
-        {is3DMode ? (
-          <div className="book-container">
-            <HTMLFlipBook 
-              width={550} 
-              height={750} 
-              size="stretch"
-              minWidth={315}
-              maxWidth={1000}
-              minHeight={400}
-              maxHeight={1536}
-              maxShadowOpacity={0.5}
-              showCover={true}
-              mobileScrollSupport={true}
-              className="haggadah-book"
-            >
-              <Page>
-                <div className="cover-front">
-                  <h1 className="hebrew">הגדה של פסח</h1>
-                  <h1>The Passover Haggadah</h1>
-                  <p>Swipe or Click to gently turn the ancient pages</p>
-                </div>
-              </Page>
+          <main className="steps-grid">
+            {is3DMode ? (() => {
+              const isHebrew = lang === 'hebrew';
               
-              {haggadahFull.map((passage, index) => (
-                <Page key={passage.ref}>
-                  <div className="book-passage-wrapper">
-                    <PassageCard 
-                      passage={passage} 
-                      index={index} 
-                      languagePreference={lang} 
-                      onVisible={handleVisibleStep} 
-                    />
+              let bookElements = [
+                <Page key="cover-front">
+                  <div className="cover-front">
+                    <div className="cover-inner">
+                      <h1 className="hebrew" style={{marginBottom: '0'}}>הגדה של פסח</h1>
+                      <img src="/images/menorah_antique_webp_1774514813235.png" alt="Ornate Emblem" className="cover-ornament" />
+                      <h1 style={{marginTop: '0'}}>The Passover Haggadah</h1>
+                      <div className="cover-divider"></div>
+                      <p style={{fontStyle: 'italic', color: '#d4af37', fontWeight: 'bold'}}>A Premium Seder Experience</p>
+                    </div>
                   </div>
                 </Page>
-              ))}
+              ];
 
-              <Page>
-                <div className="cover-back">
-                   <h2 className="hebrew">לשנה הבאה בירושלים</h2>
-                   <h2>Next Year in Jerusalem!</h2>
-                   <p>Chag Kasher V'Sameach</p>
+              paginatedHaggadah.forEach((passage, index) => {
+                bookElements.push(
+                  <Page key={`${passage.ref}-${passage.chunkId}`}>
+                    <div className="book-passage-wrapper">
+                      <PassageCard 
+                        passage={passage} 
+                        index={passage._originalIndex || index} 
+                        languagePreference={lang} 
+                        isPhonetic={isPhonetic}
+                        showHeader={passage.showHeader}
+                        showFooter={passage.showFooter}
+                        onVisible={handleVisibleStep} 
+                        is3DMode={true}
+                        selectedVoiceURI={selectedVoiceURI}
+                        playingPassageRef={playingPassageRef}
+                        isSpeakingState={isSpeaking}
+                        onPlayStart={handlePlayStart}
+                      />
+                    </div>
+                  </Page>
+                );
+              });
+
+              bookElements.push(
+                <Page key="cover-back">
+                  <div className="cover-back">
+                    <div className="cover-inner">
+                      <h2 className="hebrew" style={{fontSize: '3rem', color: '#d4af37', textShadow: '2px 2px 8px rgba(0,0,0,0.9)'}}>לשנה הבאה בירושלים</h2>
+                      <img src="/images/haggadah_ornament_webp_1774514848951.png" alt="Ending Emblem" className="cover-ornament" style={{width: '90px'}} />
+                      <h2 style={{color: '#e8dbb0', fontFamily: 'Cinzel, serif'}}>Next Year in Jerusalem!</h2>
+                      <div className="cover-divider"></div>
+                      <p style={{fontStyle: 'italic', color: '#d4af37', fontWeight: 'bold'}}>Chag Kasher V'Sameach</p>
+                    </div>
+                  </div>
+                </Page>
+              );
+
+              if (isHebrew) {
+                bookElements.reverse();
+              }
+
+              return (
+                <div className="book-container">
+                  <HTMLFlipBook 
+                    key={isHebrew ? 'rtl-book' : 'ltr-book'} // Force remount to reset startPage
+                    ref={flipBookRef}
+                    width={550} 
+                    height={750} 
+                    size="stretch"
+                    minWidth={315}
+                    maxWidth={1000}
+                    minHeight={400}
+                    maxHeight={1536}
+                    maxShadowOpacity={0.5}
+                    showCover={true}
+                    mobileScrollSupport={true}
+                    className="haggadah-book"
+                    startPage={isHebrew ? bookElements.length - 1 : 0}
+                  >
+                    {bookElements}
+                  </HTMLFlipBook>
                 </div>
-              </Page>
-            </HTMLFlipBook>
-          </div>
-        ) : (
-          haggadahFull.map((passage, index) => (
-            <PassageCard 
-              key={passage.ref} 
-              passage={passage} 
-              index={index} 
-              languagePreference={lang} 
-              onVisible={handleVisibleStep}
-            />
-          ))
-        )}
-      </main>
+              );
+            })() : (
+              haggadahFull.map((passage, index) => (
+                <PassageCard 
+                  key={passage.ref} 
+                  passage={passage} 
+                  index={index} 
+                  languagePreference={lang} 
+                  isPhonetic={isPhonetic}
+                  onVisible={handleVisibleStep}
+                  is3DMode={false}
+                  selectedVoiceURI={selectedVoiceURI}
+                  playingPassageRef={playingPassageRef}
+                  isSpeakingState={isSpeaking}
+                  onPlayStart={handlePlayStart}
+                />
+              ))
+            )}
+          </main>
 
-      <footer>
-        <p className="footer-title">Created for Passover | פסח כשר ושמח</p>
-      </footer>
+          <footer>
+            <p className="footer-title">Created for Passover | פסח כשר ושמח</p>
+          </footer>
+        </div>
+      </div>
     </div>
   );
 }

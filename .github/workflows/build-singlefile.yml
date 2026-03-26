@@ -10,11 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: 'npm'
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
@@ -23,7 +23,7 @@ jobs:
       - name: Rename missing artifact
         run: mv dist/index.html dist/PesachHaggadah.html
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: pesach-haggadah-singlefile
           path: dist/PesachHaggadah.html

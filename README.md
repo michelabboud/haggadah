@@ -1,49 +1,83 @@
-# Pesach Haggadah Web App 🍷
+# Pesach Haggadah
 
-A beautiful, fully offline-capable, bilingual Passover Haggadah web application. Built with Vite and React, it features a complete unabridged traditional text with a premium "Lite Ancient Bible" aesthetic.
+An elegant, offline-first Passover Haggadah built with React, Vite, and Capacitor. The project pairs a parchment-inspired reading experience with practical Seder tools: bilingual text, phonetic transliteration, text-to-speech, navigation aids, and a mobile-friendly layout designed to work even without internet access.
 
-## Features ✨
+## Live App
 
-* **Full Traditional Text**: Complete 38-section Haggadah in both Hebrew and English, imported directly from Sefaria.
-* **Lite Ancient Bible Theme**: A stunning UI featuring parchment tones, sepia text, and elegant gold accents to mimic a classical manuscript.
-* **Dynamic Layouts**: View in English, Hebrew, or Both. The application dynamically anchors thematic image banners to the correct side based on the language selected.
-* **Read Assists**: 
-  - Integrated fluent Auto-Scroller with three reading speeds.
-  - Intelligent instructional grouping (custom text borders for visual clarity).
-* **Fully Offline (PWA)**: Designed to be used during the Seder without an active internet connection. All text, fonts, and assets are cached instantly upon first load via Service Workers.
-* **Multiple Deployment Options**: Includes CI/CD pipelines to build for the Web (GitHub Pages), Native Android (Ionic Capacitor APK), and a standalone Single `.html` file.
+Use the published GitHub Pages site here:
 
-## Quick Start 🚀
+**https://michelabboud.github.io/haggadah/**
 
-To run the application locally for development:
+Feel free to use it for your Seder, share it with others, and contribute improvements back to the project.
 
-1. **Install Dependencies**
-   ```bash
-   npm install
-   ```
+## Highlights
 
-2. **Start the Development Server**
-   ```bash
-   npm run dev
-   ```
+- Complete traditional Haggadah content in Hebrew and English
+- Plain reading mode and 3D page-flip mode
+- Phonetic transliteration for easier participation
+- Hebrew text-to-speech support
+- Auto-scroll, table of contents, and Seder step tracking
+- Offline PWA support for low-connectivity use
+- Android packaging through Capacitor
 
-3. **Build options**
-   Build the standard web app / PWA:
-   ```bash
-   npm run build
-   ```
-   Build the single portable HTML file:
-   ```bash
-   VITE_SINGLEFILE=true npm run build
-   ```
+## Quick Start
 
-## CI/CD Workflows ⚙️
+Install dependencies:
 
-This repository is equipped with GitHub Actions that run automatically when pushed to the `main` branch. Artifacts are automatically uploaded to your repository's **Actions** tab.
-* `.github/workflows/deploy-pages.yml` - Deploys the PWA directly to GitHub Pages.
-* `.github/workflows/build-singlefile.yml` - Generates a standalone `PesachHaggadah.html` file that can be distributed via email or flash drive and opened locally in any browser.
-* `.github/workflows/build-apk.yml` - Uses Ionic Capacitor to compile `.apk` native Android app for tablets and phones.
+```bash
+npm install
+```
+
+Start the local dev server:
+
+```bash
+npm run dev
+```
+
+Build the web app:
+
+```bash
+npm run build
+```
+
+Preview the production build:
+
+```bash
+npm run preview
+```
+
+Build the standalone single-file edition:
+
+```bash
+VITE_SINGLEFILE=true npm run build
+```
+
+## Project Layout
+
+- `src/`: React UI, styles, and Haggadah rendering logic
+- `src/data/haggadah_full.json`: main bilingual source text
+- `public/images/`: bundled artwork and static assets
+- `android/`: Capacitor Android project
+- `.github/workflows/`: GitHub Pages, APK, and single-file build automation
+
+## Data Utilities
+
+Refresh the source text from Sefaria:
+
+```bash
+node fetch_haggadah_full.mjs
+```
+
+Regenerate transliteration fields:
+
+```bash
+node transliterate.mjs
+```
+
+## Contributing
+
+Issues, fixes, design improvements, text cleanup, accessibility work, and feature ideas are all welcome. If you change behavior or UI, include clear notes and screenshots in your pull request so reviewers can verify the impact quickly.
 
 ---
 
-*Chag Pesach Sameach! | פסח כשר ושמח*
+Chag Pesach Sameach v'Kasher. חג פסח כשר ושמח.

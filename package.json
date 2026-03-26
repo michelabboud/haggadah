@@ -1,6 +1,6 @@
 {
   "name": "pesach",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "type": "commonjs",
   "dependencies": {
     "hebrew-transliteration": "^2.9.1",
@@ -23,7 +23,7 @@
     "@capacitor/cli": "^8.3.0",
     "@capacitor/core": "^8.3.0",
     "@vitejs/plugin-react": "^6.0.1",
-    "vite": "^8.0.2",
+    "vite": "^8.0.3",
     "vite-plugin-pwa": "^1.2.0",
     "vite-plugin-singlefile": "^2.3.2",
     "workbox-window": "^7.4.0"
