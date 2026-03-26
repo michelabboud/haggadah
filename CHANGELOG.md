@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.3] - 2026-03-26
+### Fixed
+- **Android APK Runtime**: Removed the PWA/service-worker runtime from the app build, cleared stale native WebView caches on startup, and rebuilt the Android asset bundle to address the blank white screen in the APK.
+- **Android Branding**: Renamed the app from `Pesach` to `Haggadah` and replaced the launcher icon set with a generated icon based on the project artwork.
+- **Dependency Install Path**: Removed the legacy-only PWA dependency chain so `npm install` and `npm ci` now succeed without `--legacy-peer-deps`.
+
 ## [2.0.2] - 2026-03-26
 ### Fixed
 - **Mobile Reading Experience**: Disabled 3D Book mode on phones and forced the mobile app into the plain reading layout for a more stable, readable experience.
