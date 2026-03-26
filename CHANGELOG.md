@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.0.0] - 2026-03-26
+### Added
+- **Dual Mode UI**: Introduced a native 3D Page Flipping Book view alongside the classic Plain scroll view.
+- **Dark 'Vellum' Night Mode**: A gorgeous espresso-brown high-contrast night theme to prevent eye strain.
+- **Interactive Seder Minimap**: A sticky tracker and sliding Table of Contents Drawer mapping the 15 Seder steps.
+- **Phonetic Transliteration**: Full Hebrew-to-English phonetic transliteration for chanting pronunciation.
+- **Zero-Bandwidth Audio**: HTML5 Text-To-Speech implementation for Hebrew dictation of passages.
+- **Read-By Assignments**: Local state save-able tag interface to distribute reading parts among guests.
+- **Rabbinic Insights**: Curated expandable Midrashic commentary on critical sections like the Four Questions.
+
 All notable changes to this project will be documented in this file.
 
 ## [1.0.0] - 2026-03-26
