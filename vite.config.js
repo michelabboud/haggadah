@@ -69,6 +69,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: process.env.GITHUB_REPOSITORY && !isSingleFile ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}/` : './',
+    build: {
+      assetsInlineLimit: isSingleFile ? 100000000 : undefined,
+    },
     plugins,
   };
 });

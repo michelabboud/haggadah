@@ -1,13 +1,26 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import haggadahFull from './data/haggadah_full.json';
 import './index.css';
+import ancientScrollImage from '../public/images/ancient_scroll_webp_1774514783867.png';
+import chadGadyaImage from '../public/images/chad_gadya_webp_1774511775890.png';
+import elijahCupImage from '../public/images/elijah_cup_webp_1774511759503.png';
+import exodusDesertImage from '../public/images/exodus_desert_webp_1774495732237.png';
+import fourSonsImage from '../public/images/four_sons_webp_1774511730284.png';
+import haggadahOrnamentImage from '../public/images/haggadah_ornament_webp_1774514848951.png';
+import karpasImage from '../public/images/karpas_webp_1774511793554.png';
+import matzahWineImage from '../public/images/matzah_wine_webp_1774495714915.png';
+import menorahAntiqueImage from '../public/images/menorah_antique_webp_1774514813235.png';
+import oliveBranchImage from '../public/images/olive_branch_webp_1774514797670.png';
+import pomegranateVintageImage from '../public/images/pomegranate_vintage_webp_1774514829040.png';
+import sederPlateImage from '../public/images/seder_plate_webp_1774495702418.png';
+import tenPlaguesImage from '../public/images/ten_plagues_webp_1774511744010.png';
 
 const genericImages = [
-  "/images/ancient_scroll_webp_1774514783867.png",
-  "/images/olive_branch_webp_1774514797670.png",
-  "/images/menorah_antique_webp_1774514813235.png",
-  "/images/pomegranate_vintage_webp_1774514829040.png",
-  "/images/haggadah_ornament_webp_1774514848951.png"
+  ancientScrollImage,
+  oliveBranchImage,
+  menorahAntiqueImage,
+  pomegranateVintageImage,
+  haggadahOrnamentImage
 ];
 
 const SEDER_STEPS = [
@@ -167,21 +180,21 @@ const PassageCard = ({ passage, index, languagePreference, isPhonetic, showHeade
 
   let image = null;
   if (ref === "Passover_Haggadah,_Kadesh" || ref === "Pesach Haggadah, Kadesh") {
-    image = "/images/matzah_wine_webp_1774495714915.png";
+    image = matzahWineImage;
   } else if (ref.includes("Ha Lachma Anya")) {
-    image = "/images/exodus_desert_webp_1774495732237.png";
+    image = exodusDesertImage;
   } else if (ref.includes("Shulchan Orech")) {
-    image = "/images/seder_plate_webp_1774495702418.png";
+    image = sederPlateImage;
   } else if (ref.includes("The Four Sons")) {
-    image = "/images/four_sons_webp_1774511730284.png";
+    image = fourSonsImage;
   } else if (ref.includes("The Ten Plagues")) {
-    image = "/images/ten_plagues_webp_1774511744010.png";
+    image = tenPlaguesImage;
   } else if (ref.includes("Pour Out Thy Wrath")) {
-    image = "/images/elijah_cup_webp_1774511759503.png";
+    image = elijahCupImage;
   } else if (ref.includes("Chad Gadya")) {
-    image = "/images/chad_gadya_webp_1774511775890.png";
+    image = chadGadyaImage;
   } else if (ref.includes("Karpas")) {
-    image = "/images/karpas_webp_1774511793554.png";
+    image = karpasImage;
   } else {
     image = genericImages[index % genericImages.length];
   }
@@ -482,7 +495,10 @@ function App() {
   }, [autoScrollSpeed, is3DMode]);
 
   return (
-    <div className={`app-container ${is3DMode ? 'mode-3d' : 'mode-plain'} ${isDarkMode ? 'theme-dark' : ''}`}>
+    <div
+      className={`app-container ${is3DMode ? 'mode-3d' : 'mode-plain'} ${isDarkMode ? 'theme-dark' : ''}`}
+      style={{ '--ancient-scroll-image': `url(${ancientScrollImage})` }}
+    >
       <nav className="top-nav">
         <div className="nav-brand">Haggadah Shel Pesach</div>
         <div className="nav-controls">
@@ -575,7 +591,7 @@ function App() {
                   <div className="cover-front">
                     <div className="cover-inner">
                       <h1 className="hebrew" style={{marginBottom: '0'}}>הגדה של פסח</h1>
-                      <img src="/images/menorah_antique_webp_1774514813235.png" alt="Ornate Emblem" className="cover-ornament" />
+                      <img src={menorahAntiqueImage} alt="Ornate Emblem" className="cover-ornament" />
                       <h1 style={{marginTop: '0'}}>The Passover Haggadah</h1>
                       <div className="cover-divider"></div>
                       <p style={{fontStyle: 'italic', color: '#d4af37', fontWeight: 'bold'}}>A Premium Seder Experience</p>
@@ -612,7 +628,7 @@ function App() {
                   <div className="cover-back">
                     <div className="cover-inner">
                       <h2 className="hebrew" style={{fontSize: '3rem', color: '#d4af37', textShadow: '2px 2px 8px rgba(0,0,0,0.9)'}}>לשנה הבאה בירושלים</h2>
-                      <img src="/images/haggadah_ornament_webp_1774514848951.png" alt="Ending Emblem" className="cover-ornament" style={{width: '90px'}} />
+                      <img src={haggadahOrnamentImage} alt="Ending Emblem" className="cover-ornament" style={{width: '90px'}} />
                       <h2 style={{color: '#e8dbb0', fontFamily: 'Cinzel, serif'}}>Next Year in Jerusalem!</h2>
                       <div className="cover-divider"></div>
                       <p style={{fontStyle: 'italic', color: '#d4af37', fontWeight: 'bold'}}>Chag Kasher V'Sameach</p>

@@ -166,7 +166,7 @@ body.theme-dark .voice-select {
 .hero {
   text-align: center;
   padding: 4rem 1rem;
-  background: url('/images/ancient_scroll_webp_1774514783867.png') center/cover;
+  background: var(--ancient-scroll-image) center/cover;
   border-radius: 12px;
   border: 2px solid var(--border-color);
   margin-top: 1rem;
@@ -348,7 +348,7 @@ body.theme-dark .voice-select {
 }
 
 .book-page {
-  background: var(--bg-color) url('/images/ancient_scroll_webp_1774514783867.png');
+  background: var(--bg-color) var(--ancient-scroll-image);
   background-size: cover;
   background-blend-mode: multiply;
   box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.4), 3px 0 10px rgba(62, 39, 35, 0.6) !important;
@@ -397,7 +397,7 @@ body.theme-dark .voice-select {
   height: 100% !important;
   text-align: center !important;
   padding: 1.5rem !important;
-  background: url('/images/ancient_scroll_webp_1774514783867.png') center/cover !important;
+  background: var(--ancient-scroll-image) center/cover !important;
   background-color: #5c3a21 !important; /* Rich reddish saddle-brown leather */
   background-blend-mode: multiply !important;
   border: 12px solid #3e2723 !important; /* Deep dark brown binding edge */
