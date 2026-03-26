@@ -64,6 +64,13 @@ h1, h2, h3, h4, .hebrew {
   box-shadow: 0 4px 15px rgba(62, 39, 35, 0.1);
 }
 
+.nav-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .nav-brand {
   font-family: 'Cinzel', serif;
   font-size: 1.5rem;
@@ -131,13 +138,6 @@ body.theme-dark .voice-select {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
-}
-
-@media (max-width: 768px) {
-  .nav-controls {
-    justify-content: center;
-    width: 100%;
-  }
 }
 
 .lang-btn {
@@ -494,6 +494,10 @@ body.theme-dark .voice-select {
   overflow: hidden;
 }
 
+.mobile-viewport .main-layout {
+  margin-top: 86px;
+}
+
 /* -- Desktop Sider TOC Panel -- */
 .toc-drawer {
   width: 300px;
@@ -535,6 +539,117 @@ body.theme-dark .voice-select {
   }
   .toc-drawer.open {
     left: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .top-nav.mobile-nav {
+    top: 0;
+    left: 0;
+    right: 0;
+    min-height: auto;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0;
+    gap: 0.35rem;
+    align-items: stretch;
+    justify-content: flex-start;
+    box-shadow: 0 4px 14px rgba(62, 39, 35, 0.12);
+  }
+
+  .top-nav.mobile-nav .nav-brand {
+    font-size: 0.88rem;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .top-nav.mobile-nav .compact-brand {
+    min-width: 0;
+    margin-right: 0.2rem;
+  }
+
+  .mobile-nav-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
+    width: 100%;
+  }
+
+  .mobile-nav-row-top {
+    min-height: 1.8rem;
+  }
+
+  .mobile-nav-row-bottom {
+    min-height: 2rem;
+  }
+
+  .top-nav.mobile-nav .compact-group {
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .top-nav.mobile-nav .lang-btn {
+    font-size: 0.72rem;
+    padding: 0.28rem 0.42rem;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+
+  .top-nav.mobile-nav .icon-btn {
+    padding: 0.15rem 0.34rem;
+    font-size: 0.95rem;
+  }
+
+  .top-nav.mobile-nav .global-tools,
+  .top-nav.mobile-nav .language-toggle,
+  .top-nav.mobile-nav .view-mode-toggle,
+  .top-nav.mobile-nav .voice-toggle,
+  .top-nav.mobile-nav .scroll-toggle {
+    background: rgba(62, 39, 35, 0.04);
+    padding: 0.2rem;
+    border-radius: 12px;
+    gap: 0.18rem;
+    border-width: 1px;
+  }
+
+  .top-nav.mobile-nav .voice-select {
+    font-size: 0.7rem;
+    max-width: 6.1rem;
+    flex: 1 1 auto;
+  }
+
+  .top-nav.mobile-nav .scroll-label {
+    display: none;
+  }
+
+  .top-nav.mobile-nav .view-mode-toggle,
+  .top-nav.mobile-nav .scroll-toggle {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+
+  .top-nav.mobile-nav .language-toggle {
+    flex: 0 1 auto;
+  }
+
+  .top-nav.mobile-nav .global-tools {
+    flex: 0 0 auto;
+  }
+
+  .top-nav.mobile-nav .compact-voice {
+    flex: 0 0 auto;
+  }
+
+  .compact-voice-controls {
+    display: flex;
+    gap: 0.1rem;
+    align-items: center;
+  }
+
+  .compact-icon-btn {
+    padding: 0.12rem 0.22rem !important;
+    font-size: 0.85rem !important;
   }
 }
 

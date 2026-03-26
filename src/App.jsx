@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import haggadahFull from './data/haggadah_full.json';
 import './index.css';
 import ancientScrollImage from '../public/images/ancient_scroll_webp_1774514783867.png';
@@ -55,6 +57,28 @@ function supportsSpeechSynthesis() {
   return typeof window !== 'undefined' && 'speechSynthesis' in window;
 }
 
+function isNativeSpeechPlatform() {
+  return typeof window !== 'undefined' && Capacitor.isNativePlatform() && (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios');
+}
+
+function isHebrewVoice(voice) {
+  return typeof voice?.lang === 'string' && voice.lang.toLowerCase().startsWith('he');
+}
+
+function getPassageSpeechText(passage) {
+  return (passage.hebrew || []).join(' ').replace(/<[^>]*>?/gm, '').replace(/\s+/g, ' ').trim();
+}
+
+function getPreferredSpeechLang(voices, selectedVoiceURI) {
+  const selectedVoice = voices.find((voice) => voice.voiceURI === selectedVoiceURI);
+  if (selectedVoice?.lang) return selectedVoice.lang;
+
+  const firstHebrewVoice = voices.find(isHebrewVoice);
+  if (firstHebrewVoice?.lang) return firstHebrewVoice.lang;
+
+  return 'he-IL';
+}
+
 function chunkPassage(passage, rowsPerPage) {
   const maxLines = Math.max((passage.hebrew || []).length, (passage.english || []).length);
   if (maxLines <= rowsPerPage) {
@@ -99,11 +123,10 @@ function TOCDrawer({ isVisible, onClose, onNavigate, activeStep }) {
   );
 }
 
-const PassageCard = ({ passage, index, languagePreference, isPhonetic, showHeader = true, showFooter = true, onVisible, is3DMode = false, selectedVoiceURI, playingPassageRef, isSpeakingState, onPlayStart }) => {
+const PassageCard = ({ passage, index, languagePreference, isPhonetic, showHeader = true, showFooter = true, onVisible, speechSupported = false, playingPassageRef, isSpeakingState, onPlayPassage }) => {
   const cardRef = useRef(null);
   const ref = passage.ref;
   const stepId = getStepFromRef(ref);
-  const canSpeak = supportsSpeechSynthesis();
 
   const [assignedTo, setAssignedTo] = useState(() => {
     return localStorage.getItem(`haggadah_assign_${ref}`) || '';
@@ -148,24 +171,8 @@ const PassageCard = ({ passage, index, languagePreference, isPhonetic, showHeade
   };
 
   const handlePlayPassage = () => {
-    if (!canSpeak) return;
-
-    window.speechSynthesis.cancel();
-    if (onPlayStart) onPlayStart(passage.ref);
-
-    const cleanText = (passage.hebrew || []).join(' ').replace(/<[^>]*>?/gm, '');
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    
-    if (selectedVoiceURI) {
-       const availableVoices = window.speechSynthesis.getVoices();
-       const exactVoice = availableVoices.find(v => v.voiceURI === selectedVoiceURI);
-       if (exactVoice) utterance.voice = exactVoice;
-    } else {
-       utterance.lang = "he-IL";
-    }
-    
-    utterance.rate = 0.66; // increased slightly at user request
-    window.speechSynthesis.speak(utterance);
+    if (!speechSupported || !onPlayPassage) return;
+    onPlayPassage(passage);
   };
   
   useEffect(() => {
@@ -246,7 +253,7 @@ const PassageCard = ({ passage, index, languagePreference, isPhonetic, showHeade
                   {assignedTo ? `📖 Read by: ${assignedTo}` : '+ Assign Reader'}
                 </span>
               )}
-              {canSpeak && showHebrew && (
+              {speechSupported && showHebrew && (
                 <button className="assign-badge audio-btn" style={{border: 'none', background: 'transparent'}} onClick={handlePlayPassage} title="Read Aloud in Hebrew">
                   🔊 Listen
                 </button>
@@ -317,7 +324,13 @@ const Page = React.forwardRef((props, ref) => {
 });
 
 function App() {
-  const speechSupported = supportsSpeechSynthesis();
+  const nativeSpeechPlatform = isNativeSpeechPlatform();
+  const speechSupported = nativeSpeechPlatform || supportsSpeechSynthesis();
+  const canPauseResume = !nativeSpeechPlatform && supportsSpeechSynthesis();
+  const [isMobileViewport, setIsMobileViewport] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 768px)').matches;
+  });
   const [lang, setLang] = useState('both');
   const [autoScrollSpeed, setAutoScrollSpeed] = useState(null);
   const [activeStep, setActiveStep] = useState('Kadesh');
@@ -332,9 +345,10 @@ function App() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [playingPassageRef, setPlayingPassageRef] = useState(null);
+  const speechRequestIdRef = useRef(0);
 
   useEffect(() => {
-    if (!speechSupported) return;
+    if (!speechSupported || nativeSpeechPlatform) return;
 
     const checkSpeechState = setInterval(() => {
       setIsSpeaking(window.speechSynthesis.speaking);
@@ -342,18 +356,53 @@ function App() {
     }, 200);
 
     return () => clearInterval(checkSpeechState);
-  }, [speechSupported]);
+  }, [nativeSpeechPlatform, speechSupported]);
 
-  const handlePlayStart = (ref) => {
+  const resetSpeechState = useCallback(() => {
+    setIsSpeaking(false);
+    setIsPaused(false);
+    setPlayingPassageRef(null);
+  }, []);
+
+  const handlePlayStart = useCallback((ref) => {
     setPlayingPassageRef(ref);
     const step = getStepFromRef(ref);
     if (step) {
        setActiveStep(step);
     }
-  };
+  }, []);
+
+  const wait = useCallback((delayMs) => new Promise((resolve) => {
+    window.setTimeout(resolve, delayMs);
+  }), []);
+
+  const withNativeSpeechRetry = useCallback(async (operation) => {
+    let lastError = null;
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        const message = String(error?.message || error || '').toLowerCase();
+        const shouldRetry = message.includes('not yet initialized') || message.includes('not available');
+        if (!shouldRetry || attempt === 5) {
+          break;
+        }
+        await wait(350);
+      }
+    }
+
+    throw lastError;
+  }, [wait]);
+
+  const loadNativeVoices = useCallback(async () => {
+    const { voices: supportedVoices = [] } = await withNativeSpeechRetry(() => TextToSpeech.getSupportedVoices());
+    setVoices(supportedVoices);
+  }, [withNativeSpeechRetry]);
 
   const handlePauseResumeToggle = () => {
-    if (!speechSupported) return;
+    if (!canPauseResume) return;
 
     if (window.speechSynthesis.paused) {
       window.speechSynthesis.resume();
@@ -362,19 +411,38 @@ function App() {
     }
   };
 
-  const handleStopSpeech = () => {
+  const handleStopSpeech = async () => {
     if (!speechSupported) return;
 
+    speechRequestIdRef.current += 1;
+
+    if (nativeSpeechPlatform) {
+      try {
+        await TextToSpeech.stop();
+      } catch (error) {
+        console.error('Failed to stop native speech.', error);
+      }
+      resetSpeechState();
+      return;
+    }
+
     window.speechSynthesis.cancel();
-    setPlayingPassageRef(null);
+    resetSpeechState();
   };
 
   useEffect(() => {
     if (!speechSupported) return;
 
+    if (nativeSpeechPlatform) {
+      loadNativeVoices().catch((error) => {
+        console.error('Failed to load native speech voices.', error);
+      });
+      return undefined;
+    }
+
     const loadVoices = () => {
-      const v = window.speechSynthesis.getVoices();
-      setVoices(v);
+      const supportedVoices = window.speechSynthesis.getVoices();
+      setVoices(supportedVoices);
     };
 
     loadVoices();
@@ -383,14 +451,28 @@ function App() {
     return () => {
       window.speechSynthesis.onvoiceschanged = null;
     };
-  }, [speechSupported]);
+  }, [loadNativeVoices, nativeSpeechPlatform, speechSupported]);
 
   useEffect(() => {
-     if (!selectedVoiceURI && voices.length > 0) {
-        const he = voices.find(v => v.lang.startsWith('he'));
+     if (selectedVoiceURI === null && voices.length > 0) {
+        const he = voices.find(isHebrewVoice);
         if (he) setSelectedVoiceURI(he.voiceURI);
      }
   }, [voices, selectedVoiceURI]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    const handleViewportChange = (event) => {
+      setIsMobileViewport(event.matches);
+    };
+
+    setIsMobileViewport(mediaQuery.matches);
+
+    mediaQuery.addEventListener('change', handleViewportChange);
+    return () => mediaQuery.removeEventListener('change', handleViewportChange);
+  }, []);
 
   // Disable 'both' lang mode strictly when in 3D Mode
   useEffect(() => {
@@ -416,6 +498,80 @@ function App() {
   const handleVisibleStep = useCallback((stepId) => {
     setActiveStep(stepId);
   }, []);
+
+  const handlePlayPassage = useCallback(async (passage) => {
+    if (!speechSupported) return;
+
+    const text = getPassageSpeechText(passage);
+    if (!text) return;
+
+    const requestId = speechRequestIdRef.current + 1;
+    speechRequestIdRef.current = requestId;
+
+    handlePlayStart(passage.ref);
+    setIsPaused(false);
+
+    if (nativeSpeechPlatform) {
+      try {
+        const voiceIndex = voices.findIndex((voice) => voice.voiceURI === selectedVoiceURI);
+        const langCode = getPreferredSpeechLang(voices, selectedVoiceURI);
+
+        setIsSpeaking(true);
+        await withNativeSpeechRetry(() => TextToSpeech.speak({
+          text,
+          lang: langCode,
+          rate: 0.66,
+          pitch: 1.0,
+          volume: 1.0,
+          ...(voiceIndex >= 0 ? { voice: voiceIndex } : {})
+        }));
+
+        if (speechRequestIdRef.current === requestId) {
+          resetSpeechState();
+        }
+      } catch (error) {
+        console.error('Native speech playback failed.', error);
+        if (Capacitor.getPlatform() === 'android') {
+          try {
+            await TextToSpeech.openInstall();
+          } catch (installError) {
+            console.error('Failed to open Android TTS installer.', installError);
+          }
+        }
+        if (speechRequestIdRef.current === requestId) {
+          resetSpeechState();
+        }
+      }
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    const selectedVoice = voices.find((voice) => voice.voiceURI === selectedVoiceURI);
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    }
+    utterance.lang = getPreferredSpeechLang(voices, selectedVoiceURI);
+    utterance.rate = 0.66;
+    utterance.onstart = () => {
+      if (speechRequestIdRef.current === requestId) {
+        setIsSpeaking(true);
+        setIsPaused(false);
+      }
+    };
+    utterance.onend = () => {
+      if (speechRequestIdRef.current === requestId) {
+        resetSpeechState();
+      }
+    };
+    utterance.onerror = () => {
+      if (speechRequestIdRef.current === requestId) {
+        resetSpeechState();
+      }
+    };
+
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  }, [handlePlayStart, nativeSpeechPlatform, resetSpeechState, selectedVoiceURI, speechSupported, voices, withNativeSpeechRetry]);
 
   const handleNavigate = useCallback((stepId) => {
     if (is3DMode) {
@@ -496,73 +652,144 @@ function App() {
 
   return (
     <div
-      className={`app-container ${is3DMode ? 'mode-3d' : 'mode-plain'} ${isDarkMode ? 'theme-dark' : ''}`}
+      className={`app-container ${is3DMode ? 'mode-3d' : 'mode-plain'} ${isDarkMode ? 'theme-dark' : ''} ${isMobileViewport ? 'mobile-viewport' : ''}`}
       style={{ '--ancient-scroll-image': `url(${ancientScrollImage})` }}
     >
-      <nav className="top-nav">
-        <div className="nav-brand">Haggadah Shel Pesach</div>
-        <div className="nav-controls">
-          <div className="global-tools">
-            <button className="lang-btn icon-btn" onClick={() => setIsTOCVisible(true)} title="Table of Contents">
-              ☰
-            </button>
-            <button className="lang-btn icon-btn" onClick={() => setIsDarkMode(!isDarkMode)} title="Night Mode">
-              {isDarkMode ? '☀️' : '🌙'}
-            </button>
-            <button className={`lang-btn icon-btn ${isPhonetic ? 'active' : ''}`} onClick={() => setIsPhonetic(!isPhonetic)} title="Toggle Phonetic Transliteration">
-              Aא
-            </button>
-          </div>
+      <nav className={`top-nav ${isMobileViewport ? 'mobile-nav' : ''}`}>
+        {isMobileViewport ? (
+          <>
+            <div className="mobile-nav-row mobile-nav-row-top">
+              <div className="nav-brand compact-brand">Pesach Haggadah</div>
+              <div className="global-tools compact-group">
+                <button className="lang-btn icon-btn" onClick={() => setIsTOCVisible(true)} title="Table of Contents">
+                  ☰
+                </button>
+                <button className="lang-btn icon-btn" onClick={() => setIsDarkMode(!isDarkMode)} title="Night Mode">
+                  {isDarkMode ? '☀️' : '🌙'}
+                </button>
+                <button className={`lang-btn icon-btn ${isPhonetic ? 'active' : ''}`} onClick={() => setIsPhonetic(!isPhonetic)} title="Toggle Phonetic Transliteration">
+                  Aא
+                </button>
+              </div>
+              <div className="language-toggle compact-group">
+                <button className={`lang-btn ${lang === 'hebrew' ? 'active' : ''}`} onClick={() => setLang('hebrew')}>He</button>
+                {!is3DMode && (
+                  <button className={`lang-btn ${lang === 'both' ? 'active' : ''}`} onClick={() => setLang('both')}>Bi</button>
+                )}
+                <button className={`lang-btn ${lang === 'english' ? 'active' : ''}`} onClick={() => setLang('english')}>En</button>
+              </div>
+            </div>
 
-          <div className="view-mode-toggle">
-            <span className="scroll-label">View:</span>
-            <button className={`lang-btn ${!is3DMode ? 'active' : ''}`} onClick={() => setIs3DMode(false)}>Plain</button>
-            <button className={`lang-btn ${is3DMode ? 'active' : ''}`} onClick={() => setIs3DMode(true)}>3D Book</button>
-          </div>
+            <div className="mobile-nav-row mobile-nav-row-bottom">
+              <div className="view-mode-toggle compact-group">
+                <button className={`lang-btn ${!is3DMode ? 'active' : ''}`} onClick={() => setIs3DMode(false)}>Plain</button>
+                <button className={`lang-btn ${is3DMode ? 'active' : ''}`} onClick={() => setIs3DMode(true)}>3D</button>
+              </div>
 
-          {speechSupported && (
-            <div className="voice-toggle">
-              <span className="scroll-label">Voice:</span>
-              {isSpeaking && (
-                <div style={{display: 'flex', gap: '4px', marginRight: '6px', borderRight: '1px solid var(--border-color)', paddingRight: '8px'}}>
-                  <button className="lang-btn icon-btn" style={{padding: '0 4px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem'}} onClick={handlePauseResumeToggle} title={isPaused ? "Resume Reading" : "Pause Reading"}>
-                    {isPaused ? '▶️' : '⏸️'}
-                  </button>
-                  <button className="lang-btn icon-btn" style={{padding: '0 4px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem', filter: 'grayscale(0.2)'}} onClick={handleStopSpeech} title="Stop Reading">
-                    ⏹️
-                  </button>
+              {speechSupported && (
+                <div className="voice-toggle compact-group compact-voice">
+                  {isSpeaking && (
+                    <div className="compact-voice-controls">
+                      {canPauseResume && (
+                        <button className="lang-btn icon-btn compact-icon-btn" onClick={handlePauseResumeToggle} title={isPaused ? "Resume Reading" : "Pause Reading"}>
+                          {isPaused ? '▶️' : '⏸️'}
+                        </button>
+                      )}
+                      <button className="lang-btn icon-btn compact-icon-btn" onClick={handleStopSpeech} title="Stop Reading">
+                        ⏹️
+                      </button>
+                    </div>
+                  )}
+                  <select
+                    value={selectedVoiceURI || ''}
+                    onChange={(e) => setSelectedVoiceURI(e.target.value)}
+                    className="voice-select"
+                  >
+                    <option value="">System</option>
+                    {voices.filter(isHebrewVoice).map(v => (
+                      <option key={v.voiceURI} value={v.voiceURI}>{v.name}</option>
+                    ))}
+                  </select>
                 </div>
               )}
-              <select
-                value={selectedVoiceURI || ''}
-                onChange={(e) => setSelectedVoiceURI(e.target.value)}
-                className="voice-select"
-              >
-                {voices.filter(v => v.lang.startsWith('he')).map(v => (
-                   <option key={v.voiceURI} value={v.voiceURI}>{v.name}</option>
-                ))}
-                {voices.filter(v => v.lang.startsWith('he')).length === 0 && (
-                   <option disabled>Sys Default</option>
-                )}
-              </select>
-            </div>
-          )}
 
-          <div className="language-toggle">
-            <button className={`lang-btn ${lang === 'hebrew' ? 'active' : ''}`} onClick={() => setLang('hebrew')}>Hebrew</button>
-            {!is3DMode && (
-              <button className={`lang-btn ${lang === 'both' ? 'active' : ''}`} onClick={() => setLang('both')}>Both</button>
-            )}
-            <button className={`lang-btn ${lang === 'english' ? 'active' : ''}`} onClick={() => setLang('english')}>English</button>
-          </div>
-          <div className="scroll-toggle">
-            <span className="scroll-label">{is3DMode ? 'Auto Flip:' : 'Auto Scroll:'}</span>
-            <button className={`lang-btn ${autoScrollSpeed === null ? 'active' : ''}`} onClick={() => setAutoScrollSpeed(null)}>Off</button>
-            <button className={`lang-btn ${autoScrollSpeed === 'slow' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('slow')}>Slow</button>
-            <button className={`lang-btn ${autoScrollSpeed === 'medium' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('medium')}>Med</button>
-            <button className={`lang-btn ${autoScrollSpeed === 'fast' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('fast')}>High</button>
-          </div>
-        </div>
+              <div className="scroll-toggle compact-group">
+                <button className={`lang-btn ${autoScrollSpeed === null ? 'active' : ''}`} onClick={() => setAutoScrollSpeed(null)}>Off</button>
+                <button className={`lang-btn ${autoScrollSpeed === 'slow' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('slow')}>S</button>
+                <button className={`lang-btn ${autoScrollSpeed === 'medium' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('medium')}>M</button>
+                <button className={`lang-btn ${autoScrollSpeed === 'fast' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('fast')}>H</button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="nav-brand-row">
+              <div className="nav-brand">Haggadah Shel Pesach</div>
+            </div>
+            <div className="nav-controls">
+              <div className="global-tools">
+                <button className="lang-btn icon-btn" onClick={() => setIsTOCVisible(true)} title="Table of Contents">
+                  ☰
+                </button>
+                <button className="lang-btn icon-btn" onClick={() => setIsDarkMode(!isDarkMode)} title="Night Mode">
+                  {isDarkMode ? '☀️' : '🌙'}
+                </button>
+                <button className={`lang-btn icon-btn ${isPhonetic ? 'active' : ''}`} onClick={() => setIsPhonetic(!isPhonetic)} title="Toggle Phonetic Transliteration">
+                  Aא
+                </button>
+              </div>
+
+              <div className="view-mode-toggle">
+                <span className="scroll-label">View:</span>
+                <button className={`lang-btn ${!is3DMode ? 'active' : ''}`} onClick={() => setIs3DMode(false)}>Plain</button>
+                <button className={`lang-btn ${is3DMode ? 'active' : ''}`} onClick={() => setIs3DMode(true)}>3D Book</button>
+              </div>
+
+              {speechSupported && (
+                <div className="voice-toggle">
+                  <span className="scroll-label">Voice:</span>
+                  {isSpeaking && (
+                    <div style={{display: 'flex', gap: '4px', marginRight: '6px', borderRight: '1px solid var(--border-color)', paddingRight: '8px'}}>
+                      {canPauseResume && (
+                        <button className="lang-btn icon-btn" style={{padding: '0 4px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem'}} onClick={handlePauseResumeToggle} title={isPaused ? "Resume Reading" : "Pause Reading"}>
+                          {isPaused ? '▶️' : '⏸️'}
+                        </button>
+                      )}
+                      <button className="lang-btn icon-btn" style={{padding: '0 4px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem', filter: 'grayscale(0.2)'}} onClick={handleStopSpeech} title="Stop Reading">
+                        ⏹️
+                      </button>
+                    </div>
+                  )}
+                  <select
+                    value={selectedVoiceURI || ''}
+                    onChange={(e) => setSelectedVoiceURI(e.target.value)}
+                    className="voice-select"
+                  >
+                    <option value="">System Default</option>
+                    {voices.filter(isHebrewVoice).map(v => (
+                       <option key={v.voiceURI} value={v.voiceURI}>{v.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="language-toggle">
+                <button className={`lang-btn ${lang === 'hebrew' ? 'active' : ''}`} onClick={() => setLang('hebrew')}>Hebrew</button>
+                {!is3DMode && (
+                  <button className={`lang-btn ${lang === 'both' ? 'active' : ''}`} onClick={() => setLang('both')}>Both</button>
+                )}
+                <button className={`lang-btn ${lang === 'english' ? 'active' : ''}`} onClick={() => setLang('english')}>English</button>
+              </div>
+              <div className="scroll-toggle">
+                <span className="scroll-label">{is3DMode ? 'Auto Flip:' : 'Auto Scroll:'}</span>
+                <button className={`lang-btn ${autoScrollSpeed === null ? 'active' : ''}`} onClick={() => setAutoScrollSpeed(null)}>Off</button>
+                <button className={`lang-btn ${autoScrollSpeed === 'slow' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('slow')}>Slow</button>
+                <button className={`lang-btn ${autoScrollSpeed === 'medium' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('medium')}>Med</button>
+                <button className={`lang-btn ${autoScrollSpeed === 'fast' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('fast')}>High</button>
+              </div>
+            </div>
+          </>
+        )}
       </nav>
 
       <div className="main-layout">
@@ -612,11 +839,10 @@ function App() {
                         showHeader={passage.showHeader}
                         showFooter={passage.showFooter}
                         onVisible={handleVisibleStep} 
-                        is3DMode={true}
-                        selectedVoiceURI={selectedVoiceURI}
+                        speechSupported={speechSupported}
                         playingPassageRef={playingPassageRef}
                         isSpeakingState={isSpeaking}
-                        onPlayStart={handlePlayStart}
+                        onPlayPassage={handlePlayPassage}
                       />
                     </div>
                   </Page>
@@ -672,11 +898,10 @@ function App() {
                   languagePreference={lang} 
                   isPhonetic={isPhonetic}
                   onVisible={handleVisibleStep}
-                  is3DMode={false}
-                  selectedVoiceURI={selectedVoiceURI}
+                  speechSupported={speechSupported}
                   playingPassageRef={playingPassageRef}
                   isSpeakingState={isSpeaking}
-                  onPlayStart={handlePlayStart}
+                  onPlayPassage={handlePlayPassage}
                 />
               ))
             )}

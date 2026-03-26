@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.1] - 2026-03-26
+### Fixed
+- **Android Voice Playback**: Switched the Capacitor app to native text-to-speech via `@capacitor-community/text-to-speech`, so Hebrew narration works in the Android APK instead of relying on the WebView speech API.
+- **Compact Mobile Navigation**: Collapsed the fixed top navigation into a tighter two-row mobile layout with smaller controls that preserve the main reading area.
+- **Voice Controls by Platform**: Kept pause and resume on web, while simplifying native mobile playback controls to stop-only where pause support is unavailable.
+
 ## [2.0.0] - 2026-03-26
 ### Added
 - **Dual Mode UI**: Introduced a native 3D Page Flipping Book view alongside the classic Plain scroll view.
