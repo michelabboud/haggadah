@@ -12,16 +12,12 @@ import haggadahOrnamentImage from '../public/images/haggadah_ornament_webp_17745
 import karpasImage from '../public/images/karpas_webp_1774511793554.png';
 import matzahWineImage from '../public/images/matzah_wine_webp_1774495714915.png';
 import menorahAntiqueImage from '../public/images/menorah_antique_webp_1774514813235.png';
-import oliveBranchImage from '../public/images/olive_branch_webp_1774514797670.png';
-import pomegranateVintageImage from '../public/images/pomegranate_vintage_webp_1774514829040.png';
 import sederPlateImage from '../public/images/seder_plate_webp_1774495702418.png';
 import tenPlaguesImage from '../public/images/ten_plagues_webp_1774511744010.png';
 
 const genericImages = [
   ancientScrollImage,
-  oliveBranchImage,
   menorahAntiqueImage,
-  pomegranateVintageImage,
   haggadahOrnamentImage
 ];
 

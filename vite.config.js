@@ -4,6 +4,7 @@ import { viteSingleFile } from 'vite-plugin-singlefile'
 
 export default defineConfig(({ mode }) => {
   const isSingleFile = process.env.VITE_SINGLEFILE === 'true';
+  const base = process.env.BASE_PATH || './';
 
   const plugins = [react()];
 
@@ -12,7 +13,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    base: process.env.GITHUB_REPOSITORY && !isSingleFile ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}/` : './',
+    base,
     build: {
       assetsInlineLimit: isSingleFile ? 100000000 : undefined,
     },

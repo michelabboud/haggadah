@@ -1,11 +1,14 @@
 {
   "name": "pesach",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "",
   "main": "index.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:pages": "BASE_PATH=/haggadah/ vite build",
+    "sync:android": "npx cap sync android",
+    "build:android": "npm run build && npm run sync:android",
     "preview": "vite preview"
   },
   "keywords": [],
