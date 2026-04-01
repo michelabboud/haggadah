@@ -323,10 +323,12 @@ function App() {
   const nativeSpeechPlatform = isNativeSpeechPlatform();
   const speechSupported = nativeSpeechPlatform || supportsSpeechSynthesis();
   const canPauseResume = !nativeSpeechPlatform && supportsSpeechSynthesis();
-  const [isMobileViewport, setIsMobileViewport] = useState(() => {
+  const [isCompact, setIsCompact] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return window.matchMedia('(max-width: 600px)').matches;
+    return window.matchMedia('(max-width: 1024px)').matches;
   });
+  const [isMultiRow, setIsMultiRow] = useState(false);
+  const navRef = useRef(null);
   const [lang, setLang] = useState('both');
   const [autoScrollSpeed, setAutoScrollSpeed] = useState(null);
   const [activeStep, setActiveStep] = useState('Kadesh');
@@ -342,7 +344,7 @@ function App() {
   const [isPaused, setIsPaused] = useState(false);
   const [playingPassageRef, setPlayingPassageRef] = useState(null);
   const speechRequestIdRef = useRef(0);
-  const is3DEnabled = is3DMode && !isMobileViewport;
+  const is3DEnabled = is3DMode && !isCompact;
 
   useEffect(() => {
     if (!speechSupported || nativeSpeechPlatform) return;
@@ -460,22 +462,40 @@ function App() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const mediaQuery = window.matchMedia('(max-width: 600px)');
+    const mediaQuery = window.matchMedia('(max-width: 1024px)');
     const handleViewportChange = (event) => {
-      setIsMobileViewport(event.matches);
+      setIsCompact(event.matches);
     };
 
-    setIsMobileViewport(mediaQuery.matches);
+    setIsCompact(mediaQuery.matches);
 
     mediaQuery.addEventListener('change', handleViewportChange);
-    return () => mediaQuery.removeEventListener('change', handleViewportChange);
+
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        if (entry.target === navRef.current) {
+          const { width } = entry.contentRect;
+          // Threshold for forcing two rows
+          setIsMultiRow(width < 850);
+        }
+      }
+    });
+
+    if (navRef.current) {
+      observer.observe(navRef.current);
+    }
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleViewportChange);
+      observer.disconnect();
+    };
   }, []);
 
   useEffect(() => {
-    if (isMobileViewport && is3DMode) {
+    if (isCompact && is3DMode) {
       setIs3DMode(false);
     }
-  }, [is3DMode, isMobileViewport]);
+  }, [is3DMode, isCompact]);
 
   // Disable 'both' lang mode strictly when in 3D Mode
   useEffect(() => {
@@ -655,139 +675,74 @@ function App() {
 
   return (
     <div
-      className={`app-container ${is3DEnabled ? 'mode-3d' : 'mode-plain'} ${isDarkMode ? 'theme-dark' : ''} ${isMobileViewport ? 'mobile-viewport' : ''}`}
+      className={`app-container ${is3DEnabled ? 'mode-3d' : 'mode-plain'} ${isDarkMode ? 'theme-dark' : ''} ${isCompact ? 'mobile-viewport' : ''} ${isMultiRow ? 'layout-multi' : 'layout-single'}`}
       style={{ '--ancient-scroll-image': `url(${ancientScrollImage})` }}
     >
-      <nav className={`top-nav ${isMobileViewport ? 'mobile-nav' : ''}`}>
-        {isMobileViewport ? (
-          <>
-            <div className="mobile-nav-row mobile-nav-row-top">
-              <div className="nav-brand compact-brand">Pesach Haggadah</div>
-              <div className="global-tools compact-group">
-                <button className="lang-btn icon-btn" onClick={() => setIsTOCVisible(true)} title="Table of Contents">
-                  ☰
-                </button>
-                <button className="lang-btn icon-btn" onClick={() => setIsDarkMode(!isDarkMode)} title="Night Mode">
-                  {isDarkMode ? '☀️' : '🌙'}
-                </button>
-                <button className={`lang-btn icon-btn ${isPhonetic ? 'active' : ''}`} onClick={() => setIsPhonetic(!isPhonetic)} title="Toggle Phonetic Transliteration">
-                  Aא
-                </button>
-              </div>
-              <div className="language-toggle compact-group">
-                <button className={`lang-btn ${lang === 'hebrew' ? 'active' : ''}`} onClick={() => setLang('hebrew')}>He</button>
-                {!is3DEnabled && (
-                  <button className={`lang-btn ${lang === 'both' ? 'active' : ''}`} onClick={() => setLang('both')}>Bi</button>
+      <nav 
+        className={`top-nav ${isCompact ? 'compact-layout' : ''}`}
+        ref={navRef}
+      >
+        <div className="global-tools nav-item">
+          <button className="lang-btn icon-btn" onClick={() => setIsTOCVisible(true)} title="Table of Contents">
+            ☰
+          </button>
+          <button className="lang-btn icon-btn" onClick={() => setIsDarkMode(!isDarkMode)} title="Night Mode">
+            {isDarkMode ? '☀️' : '🌙'}
+          </button>
+          <button className={`lang-btn icon-btn ${isPhonetic ? 'active' : ''}`} onClick={() => setIsPhonetic(!isPhonetic)} title="Toggle Phonetic Transliteration">
+            Aא
+          </button>
+        </div>
+
+        {speechSupported && (
+          <div className="voice-toggle nav-item">
+            {!isCompact && <span className="scroll-label">Voice:</span>}
+            {isSpeaking && (
+              <div className="voice-actions">
+                {canPauseResume && (
+                  <button className="lang-btn icon-btn" onClick={handlePauseResumeToggle} title={isPaused ? "Resume Reading" : "Pause Reading"}>
+                    {isPaused ? '▶️' : '⏸️'}
+                  </button>
                 )}
-                <button className={`lang-btn ${lang === 'english' ? 'active' : ''}`} onClick={() => setLang('english')}>En</button>
-              </div>
-            </div>
-
-            <div className="mobile-nav-row mobile-nav-row-bottom">
-              {speechSupported && (
-                <div className="voice-toggle compact-group compact-voice">
-                  {isSpeaking && (
-                    <div className="compact-voice-controls">
-                      {canPauseResume && (
-                        <button className="lang-btn icon-btn compact-icon-btn" onClick={handlePauseResumeToggle} title={isPaused ? "Resume Reading" : "Pause Reading"}>
-                          {isPaused ? '▶️' : '⏸️'}
-                        </button>
-                      )}
-                      <button className="lang-btn icon-btn compact-icon-btn" onClick={handleStopSpeech} title="Stop Reading">
-                        ⏹️
-                      </button>
-                    </div>
-                  )}
-                  <select
-                    value={selectedVoiceURI || ''}
-                    onChange={(e) => setSelectedVoiceURI(e.target.value)}
-                    className="voice-select"
-                  >
-                    <option value="">System</option>
-                    {voices.filter(isHebrewVoice).map(v => (
-                      <option key={v.voiceURI} value={v.voiceURI}>{v.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="scroll-toggle compact-group">
-                <button className={`lang-btn ${autoScrollSpeed === null ? 'active' : ''}`} onClick={() => setAutoScrollSpeed(null)}>Off</button>
-                <button className={`lang-btn ${autoScrollSpeed === 'slow' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('slow')}>S</button>
-                <button className={`lang-btn ${autoScrollSpeed === 'medium' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('medium')}>M</button>
-                <button className={`lang-btn ${autoScrollSpeed === 'fast' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('fast')}>H</button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="nav-brand-row">
-              <div className="nav-brand">Haggadah Shel Pesach</div>
-            </div>
-            <div className="nav-controls">
-              <div className="global-tools">
-                <button className="lang-btn icon-btn" onClick={() => setIsTOCVisible(true)} title="Table of Contents">
-                  ☰
-                </button>
-                <button className="lang-btn icon-btn" onClick={() => setIsDarkMode(!isDarkMode)} title="Night Mode">
-                  {isDarkMode ? '☀️' : '🌙'}
-                </button>
-                <button className={`lang-btn icon-btn ${isPhonetic ? 'active' : ''}`} onClick={() => setIsPhonetic(!isPhonetic)} title="Toggle Phonetic Transliteration">
-                  Aא
+                <button className="lang-btn icon-btn" onClick={handleStopSpeech} title="Stop Reading">
+                  ⏹️
                 </button>
               </div>
-
-              <div className="view-mode-toggle">
-                <span className="scroll-label">View:</span>
-                <button className={`lang-btn ${!is3DEnabled ? 'active' : ''}`} onClick={() => setIs3DMode(false)}>Plain</button>
-                <button className={`lang-btn ${is3DEnabled ? 'active' : ''}`} onClick={() => setIs3DMode(true)}>3D Book</button>
-              </div>
-
-              {speechSupported && (
-                <div className="voice-toggle">
-                  <span className="scroll-label">Voice:</span>
-                  {isSpeaking && (
-                    <div style={{display: 'flex', gap: '4px', marginRight: '6px', borderRight: '1px solid var(--border-color)', paddingRight: '8px'}}>
-                      {canPauseResume && (
-                        <button className="lang-btn icon-btn" style={{padding: '0 4px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem'}} onClick={handlePauseResumeToggle} title={isPaused ? "Resume Reading" : "Pause Reading"}>
-                          {isPaused ? '▶️' : '⏸️'}
-                        </button>
-                      )}
-                      <button className="lang-btn icon-btn" style={{padding: '0 4px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem', filter: 'grayscale(0.2)'}} onClick={handleStopSpeech} title="Stop Reading">
-                        ⏹️
-                      </button>
-                    </div>
-                  )}
-                  <select
-                    value={selectedVoiceURI || ''}
-                    onChange={(e) => setSelectedVoiceURI(e.target.value)}
-                    className="voice-select"
-                  >
-                    <option value="">System Default</option>
-                    {voices.filter(isHebrewVoice).map(v => (
-                       <option key={v.voiceURI} value={v.voiceURI}>{v.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="language-toggle">
-                <button className={`lang-btn ${lang === 'hebrew' ? 'active' : ''}`} onClick={() => setLang('hebrew')}>Hebrew</button>
-                {!is3DEnabled && (
-                  <button className={`lang-btn ${lang === 'both' ? 'active' : ''}`} onClick={() => setLang('both')}>Both</button>
-                )}
-                <button className={`lang-btn ${lang === 'english' ? 'active' : ''}`} onClick={() => setLang('english')}>English</button>
-              </div>
-              <div className="scroll-toggle">
-                <span className="scroll-label">{is3DEnabled ? 'Auto Flip:' : 'Auto Scroll:'}</span>
-                <button className={`lang-btn ${autoScrollSpeed === null ? 'active' : ''}`} onClick={() => setAutoScrollSpeed(null)}>Off</button>
-                <button className={`lang-btn ${autoScrollSpeed === 'slow' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('slow')}>Slow</button>
-                <button className={`lang-btn ${autoScrollSpeed === 'medium' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('medium')}>Med</button>
-                <button className={`lang-btn ${autoScrollSpeed === 'fast' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('fast')}>High</button>
-              </div>
-            </div>
-          </>
+            )}
+            <select
+              value={selectedVoiceURI || ''}
+              onChange={(e) => setSelectedVoiceURI(e.target.value)}
+              className="voice-select"
+            >
+              <option value="">{isCompact ? 'Voice' : 'System Default'}</option>
+              {voices.filter(isHebrewVoice).map(v => (
+                 <option key={v.voiceURI} value={v.voiceURI}>{v.name}</option>
+              ))}
+            </select>
+          </div>
         )}
+
+        <div className="scroll-toggle nav-item">
+          {!isCompact && <span className="scroll-label">{is3DEnabled ? 'Flip:' : 'Scroll:'}</span>}
+          <button className={`lang-btn ${autoScrollSpeed === null ? 'active' : ''}`} onClick={() => setAutoScrollSpeed(null)}>Off</button>
+          <button className={`lang-btn ${autoScrollSpeed === 'slow' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('slow')}>{isCompact ? 'S' : 'Slow'}</button>
+          <button className={`lang-btn ${autoScrollSpeed === 'medium' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('medium')}>{isCompact ? 'M' : 'Med'}</button>
+          <button className={`lang-btn ${autoScrollSpeed === 'fast' ? 'active' : ''}`} onClick={() => setAutoScrollSpeed('fast')}>{isCompact ? 'H' : 'High'}</button>
+        </div>
+
+        <div className="language-toggle nav-item">
+          <button className={`lang-btn ${lang === 'hebrew' ? 'active' : ''}`} onClick={() => setLang('hebrew')}>
+            {isCompact ? 'He' : 'Hebrew'}
+          </button>
+          {!is3DEnabled && (
+            <button className={`lang-btn ${lang === 'both' ? 'active' : ''}`} onClick={() => setLang('both')}>
+              {isCompact ? 'Bi' : 'Both'}
+            </button>
+          )}
+          <button className={`lang-btn ${lang === 'english' ? 'active' : ''}`} onClick={() => setLang('english')}>
+            {isCompact ? 'En' : 'English'}
+          </button>
+        </div>
       </nav>
 
       <div className="main-layout">
