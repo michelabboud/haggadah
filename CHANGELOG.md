@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.0.5] - 2026-04-01
+### Fixed
+- **Tablet Responsiveness**: Optimized the top navigation bar for tablets (601px-1200px) by collapsing labels and ensuring a single-row layout to maximize vertical reading space.
+- **Project Documentation**: Added `GEMINI.md` to provide comprehensive project context and architectural guidelines for AI-assisted development.
+
+## [2.0.4] - 2026-03-26
+### Fixed
+- Version bump for maintenance.
+
 ## [2.0.3] - 2026-03-26
 ### Fixed
 - **Android APK Runtime**: Removed the PWA/service-worker runtime from the app build, cleared stale native WebView caches on startup, and rebuilt the Android asset bundle to address the blank white screen in the APK.

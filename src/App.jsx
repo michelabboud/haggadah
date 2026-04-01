@@ -325,7 +325,7 @@ function App() {
   const canPauseResume = !nativeSpeechPlatform && supportsSpeechSynthesis();
   const [isMobileViewport, setIsMobileViewport] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return window.matchMedia('(max-width: 768px)').matches;
+    return window.matchMedia('(max-width: 600px)').matches;
   });
   const [lang, setLang] = useState('both');
   const [autoScrollSpeed, setAutoScrollSpeed] = useState(null);
@@ -460,7 +460,7 @@ function App() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    const mediaQuery = window.matchMedia('(max-width: 600px)');
     const handleViewportChange = (event) => {
       setIsMobileViewport(event.matches);
     };

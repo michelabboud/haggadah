@@ -17,6 +17,7 @@ Feel free to use it for your Seder, share it with others, and contribute improve
 - Phonetic transliteration for easier participation
 - Hebrew text-to-speech support
 - Auto-scroll, table of contents, and Seder step tracking
+- Optimized tablet navigation and mobile-friendly layout
 - Offline PWA support for low-connectivity use
 - Android packaging through Capacitor
 
